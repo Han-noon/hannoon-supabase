@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  validate:
+    name: Validate Migrations & RPC
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Run migrations
+        run: supabase db reset
+
+      - name: Run pgTAP tests
+        run: supabase test db
+        continue-on-error: true  # 테스트 파일 작성 전까지 임시 허용
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
