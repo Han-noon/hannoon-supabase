@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  validate:
+    name: Validate Migrations & RPC
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.95.4
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Run migrations
+        run: supabase db reset
+
+      - name: Check for pgTAP test files
+        id: pgtap_tests
+        shell: bash
+        run: |
+          if find . -type f \( -path './supabase/tests/*' -o -path './tests/*' -o -path './test/*' \) -name '*.sql' | grep -q .; then
+            echo "has_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run pgTAP tests
+        if: steps.pgtap_tests.outputs.has_tests == 'true'
+        run: supabase test db
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
