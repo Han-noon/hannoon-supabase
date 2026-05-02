@@ -24,9 +24,19 @@ jobs:
       - name: Run migrations
         run: supabase db reset
 
+      - name: Check for pgTAP test files
+        id: pgtap_tests
+        shell: bash
+        run: |
+          if find . -type f \( -path './supabase/tests/*' -o -path './tests/*' -o -path './test/*' \) -name '*.sql' | grep -q .; then
+            echo "has_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run pgTAP tests
+        if: steps.pgtap_tests.outputs.has_tests == 'true'
         run: supabase test db
-        continue-on-error: true  # 테스트 파일 작성 전까지 임시 허용
 
       - name: Stop Supabase
         if: always()
