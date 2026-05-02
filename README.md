@@ -6,9 +6,8 @@
 hannoon-supabase/
 ├── .github/
 │   └── workflows/
-│       ├── deploy-production.yml
-│       ├── deploy-staging.yml
-│       └── pr-check.yml
+│       ├── ci.yaml
+│       └── deploy.yaml
 ├── supabase/
 │   ├── migrations/          # 스키마 변경 이력
 │   │   └── 20240101000000_init.sql
@@ -18,7 +17,7 @@ hannoon-supabase/
 ├── docs/
 │   ├── schema.md            # 테이블 설계 문서
 │   └── rls-policy.md        # RLS 정책 문서
-├── .env.example
+├── .env
 ├── .gitignore
 └── README.md
 ```
