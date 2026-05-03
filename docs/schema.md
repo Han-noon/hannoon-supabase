@@ -47,4 +47,4 @@
 |------|------|
 | `authenticated` | `SELECT` on `profiles` |
 | `authenticated` | `EXECUTE` on `get_profile()` |
-| `service_role` | `REFERENCES`, `TRIGGER`, `TRUNCATE` on `profiles` |
+| `service_role` | `ALL` on `profiles` |
