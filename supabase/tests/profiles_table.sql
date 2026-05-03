@@ -79,8 +79,8 @@ INSERT INTO public.profiles (id, email) VALUES
   ('bbbbbbbb-0000-0000-0000-000000000002', 'rls_test_b@example.com');
 SET LOCAL session_replication_role = DEFAULT;
 
--- pgTAP 함수 실행 권한 임시 부여 (테스트 인프라, ROLLBACK으로 취소됨)
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public     TO authenticated;
+-- pgTAP 함수 실행 권한만 임시 부여 (테스트 인프라, ROLLBACK으로 취소됨)
+-- public.get_profile() 실행 권한은 마이그레이션에서 검증되어야 하므로 public 전체에는 부여하지 않는다.
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO authenticated;
 
 -- anon은 profiles에 SELECT 권한이 없어야 한다
