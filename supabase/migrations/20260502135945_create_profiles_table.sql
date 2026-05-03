@@ -1,7 +1,7 @@
 create table "public"."profiles" (
   "id" uuid not null default auth.uid(),
   "email" character varying,
-  "created_at" timestamp with time zone not null default now()
+  "created_at" timestamp not null default now()
 );
 
 

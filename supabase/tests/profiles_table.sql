@@ -11,9 +11,9 @@ SELECT has_column('public', 'profiles', 'email',      'email 컬럼이 존재해
 SELECT has_column('public', 'profiles', 'created_at', 'created_at 컬럼이 존재해야 한다');
 
 -- 컬럼 타입 확인
-SELECT col_type_is('public', 'profiles', 'id',         'uuid',                     'id는 uuid 타입이어야 한다');
-SELECT col_type_is('public', 'profiles', 'email',      'character varying',        'email은 character varying 타입이어야 한다');
-SELECT col_type_is('public', 'profiles', 'created_at', 'timestamp with time zone', 'created_at은 timestamptz 타입이어야 한다');
+SELECT col_type_is('public', 'profiles', 'id',         'uuid',              'id는 uuid 타입이어야 한다');
+SELECT col_type_is('public', 'profiles', 'email',      'character varying', 'email은 character varying 타입이어야 한다');
+SELECT col_type_is('public', 'profiles', 'created_at', 'timestamp',         'created_at은 timestamp 타입이어야 한다');
 
 -- NOT NULL 확인
 SELECT col_not_null('public', 'profiles', 'id',         'id는 NOT NULL이어야 한다');
