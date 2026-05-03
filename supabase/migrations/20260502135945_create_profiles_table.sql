@@ -59,7 +59,7 @@ on "public"."profiles"
 as permissive
 for select
 to authenticated
-using ((( SELECT auth.uid() AS uid) = id));
+using (auth.uid() = id);
 
 
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
