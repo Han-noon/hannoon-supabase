@@ -1,4 +1,4 @@
 create trigger set_updated_at
-before update on articles
+before update on public.articles
 for each row
-execute function update_updated_at();
+execute function public.update_updated_at();
