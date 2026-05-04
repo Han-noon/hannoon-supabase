@@ -21,6 +21,13 @@ alter table "public"."event_articles" add constraint "event_articles_event_id_fk
 
 alter table "public"."event_articles" validate constraint "event_articles_event_id_fkey";
 
+
+grant select on table "public"."event_articles" to "anon";
+
+grant select on table "public"."event_articles" to "authenticated";
+
+grant select, insert, update, delete on table "public"."event_articles" to "service_role";
+
 grant references on table "public"."event_articles" to "service_role";
 
 grant trigger on table "public"."event_articles" to "service_role";
