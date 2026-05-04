@@ -37,6 +37,8 @@ CREATE UNIQUE INDEX events_pkey ON public.events USING btree (id);
 
 CREATE UNIQUE INDEX topics_pkey ON public.topics USING btree (id);
 
+CREATE INDEX events_topic_id_idx ON public.events USING btree (topic_id);
+
 alter table "public"."events" add constraint "events_pkey" PRIMARY KEY using index "events_pkey";
 
 alter table "public"."topics" add constraint "topics_pkey" PRIMARY KEY using index "topics_pkey";
@@ -145,6 +147,10 @@ DECLARE
   v_next_cursor bigint;
   v_count       int;
 BEGIN
+  IF p_size > 100 THEN
+    p_size := 100;
+  END IF;
+
   EXECUTE format(
     'SELECT array_agg(row_to_json(e))
      FROM (
@@ -152,11 +158,10 @@ BEGIN
        FROM public.events
        WHERE topic_id = $1
          AND ($2::bigint IS NULL OR id %s $2)
-       ORDER BY created_at %s, id %s
+       ORDER BY id %s
        LIMIT $3
      ) e',
-    CASE WHEN p_order = 'desc' THEN '<' ELSE '>' END,
-    CASE WHEN p_order = 'desc' THEN 'DESC' ELSE 'ASC' END,
+    CASE WHEN p_order = 'desc' THEN '<=' ELSE '>=' END,
     CASE WHEN p_order = 'desc' THEN 'DESC' ELSE 'ASC' END
   )
   INTO v_events
@@ -166,8 +171,8 @@ BEGIN
 
   IF v_count > p_size THEN
     v_has_more    := true;
+    v_next_cursor := (v_events[p_size + 1]->>'id')::bigint;
     v_events      := v_events[1:p_size];
-    v_next_cursor := (v_events[p_size]->>'id')::bigint;
   END IF;
 
   RETURN json_build_object(
