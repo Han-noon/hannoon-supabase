@@ -38,6 +38,7 @@ set check_function_bodies = off;
 CREATE OR REPLACE FUNCTION public.update_updated_at()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path = ''
 AS $function$
 begin
   new.updated_at = now();
