@@ -150,6 +150,14 @@
 
 제약: `subscriptions_user_id_topic_id_key` — UNIQUE (user_id, topic_id)
 
+### event_articles
+
+| Column | Type | Nullable | Default |
+|---|---|---|---|
+| id | bigint (identity) | NOT NULL | — |
+| event_id | bigint (FK → events.id) | NOT NULL | — |
+| article_id | bigint (FK → articles.id) | NOT NULL | — |
+
 ---
 
 ## Functions
@@ -159,6 +167,7 @@
 | `get_topic(p_topic_id bigint)` | json | 단일 topic 조회. 없으면 예외 발생 |
 | `get_event(p_event_id bigint)` | json | 단일 event 조회. 없으면 예외 발생 |
 | `get_events_by_topic(p_topic_id, p_cursor_id, p_size, p_order)` | json | cursor 기반 페이지네이션. `{ events, has_more, next_cursor }` 반환 |
+| `get_articles_by_event(p_event_id, p_bias_type, p_page, p_size, p_order)` | json | 이벤트별 기사 page 기반 페이지네이션. `{ articles, page, size, total_count, total_pages }` 반환. `p_bias_type`: NULL(전체)/left/mid/right, `p_page` default 1 (1 미만 예외), `p_size` default 3 (1 미만 예외, 100 초과 시 클램핑), `p_order`: asc(기본)/desc |
 | `get_topics(p_search, p_category, p_page, p_size)` | json | topics 목록 조회. `{ topics, page, size, total_count, total_pages }` 반환, 각 topic에 `subscription_id`, `is_subscribed` 포함 |
 | `get_subscribed_topics(p_page, p_size)` | json | 현재 사용자가 구독한 topics 목록 조회. `{ topics, page, size, total_count, total_pages }` 반환 |
 | `get_events(p_search, p_category, p_page, p_size)` | json | events 목록 조회. `{ events, page, size, total_count, total_pages }` 반환, 각 event에 `subscription_id`, `is_subscribed` 포함 |
