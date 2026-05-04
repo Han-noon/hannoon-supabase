@@ -110,6 +110,7 @@ RETURNS json
 LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
+SET search_path = ''
 AS $$
 DECLARE
   v_topic json;
@@ -122,7 +123,7 @@ BEGIN
   ) t;
 
   IF v_topic IS NULL THEN
-    RAISE EXCEPTION 'topic not found';
+    RAISE EXCEPTION '존재하지 않는 토픽입니다';
   END IF;
 
   RETURN v_topic;
@@ -140,6 +141,7 @@ RETURNS json
 LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
+SET search_path = ''
 AS $$
 DECLARE
   v_events      json[];
@@ -147,6 +149,14 @@ DECLARE
   v_next_cursor bigint;
   v_count       int;
 BEGIN
+  IF p_size IS NULL THEN
+    p_size := 3;
+  END IF;
+
+  IF p_size < 1 THEN
+    RAISE EXCEPTION 'size는 1 이상이어야 합니다';
+  END IF;
+
   IF p_size > 100 THEN
     p_size := 100;
   END IF;
@@ -200,6 +210,7 @@ RETURNS json
 LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
+SET search_path = ''
 AS $$
 DECLARE
   v_event json;
@@ -214,7 +225,7 @@ BEGIN
   ) e;
 
   IF v_event IS NULL THEN
-    RAISE EXCEPTION 'event not found';
+    RAISE EXCEPTION '존재하지 않는 이벤트입니다';
   END IF;
 
   RETURN v_event;

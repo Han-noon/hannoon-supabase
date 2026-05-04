@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(14);
+SELECT plan(16);
 
 -- 테스트 데이터 삽입 (트랜잭션 종료 시 롤백)
 INSERT INTO public.topics (category, title, summary) VALUES
@@ -34,7 +34,7 @@ SELECT ok(
 
 SELECT throws_ok(
   $$ SELECT public.get_topic(999999) $$,
-  'topic not found',
+  '존재하지 않는 토픽입니다',
   'get_topic: 존재하지 않는 topic_id 시 예외 발생'
 );
 
@@ -86,6 +86,22 @@ SELECT is(
   'get_events_by_topic: 전체 건수 <= p_size 시 has_more = false'
 );
 
+-- get_events_by_topic: p_size NULL 시 디폴트(3) 적용
+SELECT is(
+  jsonb_array_length(
+    (public.get_events_by_topic((SELECT id FROM public.topics WHERE title = '_test_topic_pagination'), NULL, NULL, 'asc'))::jsonb -> 'events'
+  ),
+  3,
+  'get_events_by_topic: p_size NULL 시 디폴트 3 적용'
+);
+
+-- get_events_by_topic: p_size < 1 시 예외 발생
+SELECT throws_ok(
+  $$ SELECT public.get_events_by_topic((SELECT id FROM public.topics WHERE title = '_test_topic_pagination'), NULL, 0, 'asc') $$,
+  'size는 1 이상이어야 합니다',
+  'get_events_by_topic: p_size < 1 시 예외 발생'
+);
+
 -- get_event
 SELECT is(
   (public.get_event((SELECT id FROM public.events WHERE title = '이벤트1')))::jsonb ->> 'title',
@@ -109,7 +125,7 @@ SELECT ok(
 
 SELECT throws_ok(
   $$ SELECT public.get_event(999999) $$,
-  'event not found',
+  '존재하지 않는 이벤트입니다',
   'get_event: 존재하지 않는 event_id 시 예외 발생'
 );
 
