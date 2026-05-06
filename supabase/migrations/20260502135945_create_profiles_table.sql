@@ -84,4 +84,17 @@ using (auth.uid() = id);
 
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+CREATE OR REPLACE FUNCTION public.update_profile_image_url(new_url text)
+ RETURNS void
+ LANGUAGE sql
+ SECURITY INVOKER
+ SET search_path = ''
+AS $function$
+  UPDATE public.profiles
+  SET profile_image_url = new_url
+  WHERE id = auth.uid();
+$function$;
+
+grant execute on function "public"."update_profile_image_url"(text) to "authenticated";
+
 
