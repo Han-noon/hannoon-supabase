@@ -117,4 +117,36 @@ GRANT EXECUTE ON FUNCTION "public"."get_articles_by_event"(bigint, public.bias_t
 GRANT EXECUTE ON FUNCTION "public"."get_articles_by_event"(bigint, public.bias_type, int, int, text) TO "service_role";
 
 
+CREATE OR REPLACE FUNCTION public.update_event_counts_on_article_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_bias_type public.bias_type;
+BEGIN
+  SELECT bias_type INTO v_bias_type
+  FROM public.articles
+  WHERE id = NEW.article_id;
 
+  UPDATE public.events
+  SET
+    article_count = article_count + 1,
+    left_count  = left_count  + CASE WHEN v_bias_type = 'left'  THEN 1 ELSE 0 END,
+    mid_count   = mid_count   + CASE WHEN v_bias_type = 'mid'   THEN 1 ELSE 0 END,
+    right_count = right_count + CASE WHEN v_bias_type = 'right' THEN 1 ELSE 0 END
+  WHERE id = NEW.event_id;
+
+  RAISE LOG 'update_event_counts_on_article_insert: event_id=%, article_id=%, bias_type=%',
+    NEW.event_id, NEW.article_id, v_bias_type;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.update_event_counts_on_article_insert() FROM PUBLIC;
+
+CREATE TRIGGER update_event_counts_on_article_insert
+AFTER INSERT ON public.event_articles
+FOR EACH ROW EXECUTE FUNCTION public.update_event_counts_on_article_insert();
