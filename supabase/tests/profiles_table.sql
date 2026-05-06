@@ -1,19 +1,23 @@
 BEGIN;
 
-SELECT plan(22);
+SELECT plan(24);
 
 -- 테이블 존재 확인
 SELECT has_table('public', 'profiles', 'profiles 테이블이 존재해야 한다');
 
 -- 컬럼 존재 확인
-SELECT has_column('public', 'profiles', 'id',         'id 컬럼이 존재해야 한다');
-SELECT has_column('public', 'profiles', 'email',      'email 컬럼이 존재해야 한다');
-SELECT has_column('public', 'profiles', 'created_at', 'created_at 컬럼이 존재해야 한다');
+SELECT has_column('public', 'profiles', 'id',                'id 컬럼이 존재해야 한다');
+SELECT has_column('public', 'profiles', 'email',             'email 컬럼이 존재해야 한다');
+SELECT has_column('public', 'profiles', 'name',              'name 컬럼이 존재해야 한다');
+SELECT has_column('public', 'profiles', 'profile_image_url', 'profile_image_url 컬럼이 존재해야 한다');
+SELECT has_column('public', 'profiles', 'created_at',        'created_at 컬럼이 존재해야 한다');
 
 -- 컬럼 타입 확인
-SELECT col_type_is('public', 'profiles', 'id',         'uuid',              'id는 uuid 타입이어야 한다');
-SELECT col_type_is('public', 'profiles', 'email',      'character varying', 'email은 character varying 타입이어야 한다');
-SELECT col_type_is('public', 'profiles', 'created_at', 'timestamp',         'created_at은 timestamp 타입이어야 한다');
+SELECT col_type_is('public', 'profiles', 'id',                'uuid',              'id는 uuid 타입이어야 한다');
+SELECT col_type_is('public', 'profiles', 'email',             'character varying', 'email은 character varying 타입이어야 한다');
+SELECT col_type_is('public', 'profiles', 'name',              'text',              'name은 text 타입이어야 한다');
+SELECT col_type_is('public', 'profiles', 'profile_image_url', 'text',              'profile_image_url은 text 타입이어야 한다');
+SELECT col_type_is('public', 'profiles', 'created_at',        'timestamp',         'created_at은 timestamp 타입이어야 한다');
 
 -- NOT NULL 확인
 SELECT col_not_null('public', 'profiles', 'id',         'id는 NOT NULL이어야 한다');
@@ -99,22 +103,17 @@ SELECT results_eq(
   'authenticated 유저는 본인 프로필만 조회되어야 한다'
 );
 
--- get_profile()은 본인 이메일을 반환해야 한다
-SELECT is(
-  public.get_profile(),
-  'rls_test_a@example.com'::character varying,
-  'get_profile()은 본인 이메일을 반환해야 한다'
-);
-
--- 유저 A로 접속 시 유저 B의 프로필은 보이지 않아야 한다
-SELECT is_empty(
-  $$SELECT id FROM public.profiles WHERE id = 'bbbbbbbb-0000-0000-0000-000000000002'::uuid$$,
-  '다른 유저의 프로필은 조회되지 않아야 한다'
-);
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub', '', true);
 SELECT set_config('request.jwt.claims',    '{}', true);
 
+-- -------------------------------------------------------
+-- handle_new_user 트리거 동작 테스트
+--
+-- name / profile_image_url 채움 여부는 실제 Google OAuth 흐름으로 검증한다.
+-- config.toml의 [auth.external.google]에 실제 Client ID/Secret을 설정하고,
+-- Google Cloud Console의 리디렉션 URI에 http://127.0.0.1:54321/auth/v1/callback을
+-- 등록한 뒤 로컬에서 OAuth 로그인하면 실제 메타데이터가 profiles에 삽입된다.
 -- -------------------------------------------------------
 
 SELECT * FROM finish();

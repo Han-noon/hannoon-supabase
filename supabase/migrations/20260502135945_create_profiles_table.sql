@@ -1,6 +1,8 @@
 create table "public"."profiles" (
   "id" uuid not null default auth.uid(),
   "email" character varying,
+  "name" text,
+  "profile_image_url" text,
   "created_at" timestamp not null default now()
 );
 
@@ -28,20 +30,38 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
  SET search_path TO ''
 AS $function$
 begin
-  insert into public.profiles (id, email)
-  values (new.id, new.email);
+  if new.raw_app_meta_data->>'provider' = 'google' then
+    insert into public.profiles (id, email, name, profile_image_url)
+    values (
+      new.id,
+      new.email,
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'avatar_url'
+    );
+  else
+    insert into public.profiles (id, email)
+    values (new.id, new.email);
+  end if;
   return new;
 end;
 $function$;
 
 CREATE OR REPLACE FUNCTION public.get_profile()
- RETURNS character varying
+ RETURNS json
  LANGUAGE sql
  STABLE
  SECURITY INVOKER
+ SET search_path = ''
 AS $function$
-  SELECT email FROM public.profiles WHERE id = auth.uid();
+  SELECT json_build_object(
+    'email', email,
+    'name', name,
+    'profile_image_url', profile_image_url
+  )
+  FROM public.profiles WHERE id = auth.uid();
 $function$;
+
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC;
 
 grant select on table "public"."profiles" to "authenticated";
 
