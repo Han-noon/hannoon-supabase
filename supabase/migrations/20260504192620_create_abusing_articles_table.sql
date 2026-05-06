@@ -104,4 +104,72 @@ AFTER INSERT ON public.abusing_articles
 FOR EACH ROW EXECUTE FUNCTION public.decrement_bias_count();
 
 
+CREATE OR REPLACE FUNCTION public.get_abusing_articles_by_event(
+  p_event_id     bigint,
+  p_abusing_type public.abusing_type DEFAULT NULL,
+  p_page         int                 DEFAULT 1,
+  p_size         int                 DEFAULT 4
+)
+RETURNS json
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = ''
+AS $$
+DECLARE
+  v_articles    json[];
+  v_total_count int;
+  v_total_pages int;
+BEGIN
+  p_page := coalesce(p_page, 1);
+  p_size := coalesce(p_size, 4);
+
+  IF p_page < 1 THEN
+    RAISE EXCEPTION 'page는 1 이상이어야 합니다';
+  END IF;
+
+  IF p_size < 1 THEN
+    RAISE EXCEPTION 'size는 1 이상이어야 합니다';
+  END IF;
+
+  IF p_size > 100 THEN
+    p_size := 100;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_total_count
+  FROM public.abusing_articles aa
+  WHERE aa.event_id = p_event_id
+    AND (p_abusing_type IS NULL OR aa.type = p_abusing_type);
+
+  v_total_pages := CEIL(v_total_count::numeric / p_size);
+
+  SELECT array_agg(row_to_json(r))
+  INTO v_articles
+  FROM (
+    SELECT a.link, a.title, a.summary, a.article_image_url, a.publisher, a.published_at
+    FROM public.abusing_articles aa
+    JOIN public.articles a ON aa.article_id = a.id
+    WHERE aa.event_id = p_event_id
+      AND (p_abusing_type IS NULL OR aa.type = p_abusing_type)
+    ORDER BY aa.id DESC
+    LIMIT p_size OFFSET (p_page - 1) * p_size
+  ) r;
+
+  RETURN json_build_object(
+    'articles',    coalesce(to_json(v_articles), '[]'::json),
+    'page',        p_page,
+    'size',        p_size,
+    'total_count', v_total_count,
+    'total_pages', v_total_pages
+  );
+END;
+$$;
+
+
+GRANT EXECUTE ON FUNCTION "public"."get_abusing_articles_by_event"(bigint, public.abusing_type, int, int) TO "anon";
+GRANT EXECUTE ON FUNCTION "public"."get_abusing_articles_by_event"(bigint, public.abusing_type, int, int) TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."get_abusing_articles_by_event"(bigint, public.abusing_type, int, int) TO "service_role";
+
+
 

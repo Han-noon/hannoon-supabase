@@ -45,6 +45,13 @@ INSERT INTO public.event_articles (event_id, article_id) VALUES
   ((SELECT id FROM public.events WHERE title = '금리 0.25%p 인상 결정'), (SELECT id FROM public.articles WHERE guid = 2003)),
   ((SELECT id FROM public.events WHERE title = '금리 0.25%p 인상 결정'), (SELECT id FROM public.articles WHERE guid = 2004));
 
+INSERT INTO public.abusing_articles (event_id, article_id, type) VALUES
+  ((SELECT id FROM public.events WHERE title = '여당 과반 확보'), (SELECT id FROM public.articles WHERE guid = 1001), 'title_content_mismatch'),
+  ((SELECT id FROM public.events WHERE title = '여당 과반 확보'), (SELECT id FROM public.articles WHERE guid = 1002), 'content_context_mismatch'),
+  ((SELECT id FROM public.events WHERE title = '여당 과반 확보'), (SELECT id FROM public.articles WHERE guid = 1005), 'title_content_mismatch'),
+  ((SELECT id FROM public.events WHERE title = '금리 0.25%p 인상 결정'), (SELECT id FROM public.articles WHERE guid = 2001), 'content_context_mismatch'),
+  ((SELECT id FROM public.events WHERE title = '금리 0.25%p 인상 결정'), (SELECT id FROM public.articles WHERE guid = 2004), 'title_content_mismatch');
+
 INSERT INTO auth.users (
   instance_id,
   id,
