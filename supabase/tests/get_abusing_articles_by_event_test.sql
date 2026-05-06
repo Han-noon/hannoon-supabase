@@ -16,6 +16,13 @@ INSERT INTO public.articles (feed_url, guid, link, category, title, summary, con
   ('https://feeds.test/aa', 8004, 'https://test.com/aa/4', '정치', '_test_abusing_article_4', '요약4', 'rss', '테스트언론', '2024-01-04 00:00:00', 'mid',   'ready'),
   ('https://feeds.test/aa', 8005, 'https://test.com/aa/5', '정치', '_test_abusing_article_5', '요약5', 'rss', '테스트언론', '2024-01-05 00:00:00', 'right', 'ready');
 
+INSERT INTO public.event_articles (event_id, article_id) VALUES
+  ((SELECT id FROM public.events WHERE title = '_test_event_abusing'), (SELECT id FROM public.articles WHERE guid = 8001)),
+  ((SELECT id FROM public.events WHERE title = '_test_event_abusing'), (SELECT id FROM public.articles WHERE guid = 8002)),
+  ((SELECT id FROM public.events WHERE title = '_test_event_abusing'), (SELECT id FROM public.articles WHERE guid = 8003)),
+  ((SELECT id FROM public.events WHERE title = '_test_event_abusing'), (SELECT id FROM public.articles WHERE guid = 8004)),
+  ((SELECT id FROM public.events WHERE title = '_test_event_abusing'), (SELECT id FROM public.articles WHERE guid = 8005));
+
 INSERT INTO public.abusing_articles (event_id, article_id, type) VALUES
   ((SELECT id FROM public.events WHERE title = '_test_event_abusing'), (SELECT id FROM public.articles WHERE guid = 8001), 'title_content_mismatch'),
   ((SELECT id FROM public.events WHERE title = '_test_event_abusing'), (SELECT id FROM public.articles WHERE guid = 8002), 'title_content_mismatch'),
