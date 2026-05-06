@@ -131,6 +131,17 @@
 | prev_event | bigint (FK → events.id) | NULL | — |
 | next_event | bigint (FK → events.id) | NULL | — |
 
+### subscriptions
+
+| Column | Type | Nullable | Default |
+|---|---|---|---|
+| id | bigint (identity) | NOT NULL | — |
+| user_id | uuid (FK → profiles.id) | NOT NULL | — |
+| topic_id | bigint (FK → topics.id) | NOT NULL | — |
+| created_at | timestamp | NOT NULL | now() |
+
+제약: `subscriptions_user_id_topic_id_key` — UNIQUE (user_id, topic_id)
+
 ---
 
 ## Functions
@@ -140,3 +151,16 @@
 | `get_topic(p_topic_id bigint)` | json | 단일 topic 조회. 없으면 예외 발생 |
 | `get_event(p_event_id bigint)` | json | 단일 event 조회. 없으면 예외 발생 |
 | `get_events_by_topic(p_topic_id, p_cursor_id, p_size, p_order)` | json | cursor 기반 페이지네이션. `{ events, has_more, next_cursor }` 반환 |
+| `subscribe_topic(p_topic_id bigint)` | void | 토픽 구독. 없는 토픽이면 예외, 이미 구독 중이면 예외 |
+| `unsubscribe_topic(p_topic_id bigint)` | void | 토픽 구독 해제. 미구독이어도 성공 처리 |
+
+---
+
+## 권한 (Grants) — subscriptions
+
+| 대상 | 권한 |
+|------|------|
+| `authenticated` | `SELECT`, `INSERT`, `DELETE` on `subscriptions` |
+| `authenticated` | `EXECUTE` on `subscribe_topic(bigint)` |
+| `authenticated` | `EXECUTE` on `unsubscribe_topic(bigint)` |
+| `service_role` | `ALL` on `subscriptions` |
