@@ -77,6 +77,14 @@
 
 ---
 
+## Extensions
+
+| Extension | Schema | Usage |
+|---|---|---|
+| `pg_trgm` | `extensions` | topics/events 검색용 `extensions.word_similarity`, `extensions.gin_trgm_ops` |
+
+---
+
 ## Tables
 
 ### articles
@@ -151,8 +159,24 @@
 | `get_topic(p_topic_id bigint)` | json | 단일 topic 조회. 없으면 예외 발생 |
 | `get_event(p_event_id bigint)` | json | 단일 event 조회. 없으면 예외 발생 |
 | `get_events_by_topic(p_topic_id, p_cursor_id, p_size, p_order)` | json | cursor 기반 페이지네이션. `{ events, has_more, next_cursor }` 반환 |
+| `get_topics(p_search, p_category, p_page, p_size)` | json | topics 목록 조회. `{ topics, page, size, total_count, total_pages }` 반환, 각 topic에 `subscription_id`, `is_subscribed` 포함 |
+| `get_subscribed_topics(p_page, p_size)` | json | 현재 사용자가 구독한 topics 목록 조회. `{ topics, page, size, total_count, total_pages }` 반환 |
+| `get_events(p_search, p_category, p_page, p_size)` | json | events 목록 조회. `{ events, page, size, total_count, total_pages }` 반환, 각 event에 `subscription_id`, `is_subscribed` 포함 |
 | `subscribe_topic(p_topic_id bigint)` | void | 토픽 구독. 없는 토픽이면 예외, 이미 구독 중이면 예외 |
 | `unsubscribe_topic(p_topic_id bigint)` | void | 토픽 구독 해제. 미구독이어도 성공 처리 |
+
+---
+
+## 권한 (Grants) — list query functions
+
+| 대상 | 권한 |
+|------|------|
+| `anon` | `EXECUTE` on `get_topics(text, category, int, int)` |
+| `anon` | `EXECUTE` on `get_events(text, category, int, int)` |
+| `authenticated` | `EXECUTE` on `get_topics(text, category, int, int)` |
+| `authenticated` | `EXECUTE` on `get_subscribed_topics(int, int)` |
+| `authenticated` | `EXECUTE` on `get_events(text, category, int, int)` |
+| `service_role` | `EXECUTE` on list query functions |
 
 ---
 
