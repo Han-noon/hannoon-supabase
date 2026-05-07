@@ -65,12 +65,16 @@ using (((SELECT auth.uid()) = user_id));
 
 
 
+DROP FUNCTION IF EXISTS public.subscribe_topic(bigint);
+
 CREATE OR REPLACE FUNCTION public.subscribe_topic(p_topic_id bigint)
-RETURNS void
+RETURNS json
 LANGUAGE plpgsql
 SECURITY INVOKER
 SET search_path = ''
 AS $$
+DECLARE
+  v_subscription_id bigint;
 BEGIN
   IF p_topic_id IS NULL THEN
     RAISE EXCEPTION '토픽 ID는 필수입니다';
@@ -82,11 +86,21 @@ BEGIN
 
   INSERT INTO public.subscriptions (user_id, topic_id)
   VALUES (auth.uid(), p_topic_id)
-  ON CONFLICT ON CONSTRAINT subscriptions_user_id_topic_id_key DO NOTHING;
+  ON CONFLICT ON CONSTRAINT subscriptions_user_id_topic_id_key DO NOTHING
+  RETURNING id INTO v_subscription_id;
 
-  IF NOT FOUND THEN
-    RAISE EXCEPTION '이미 구독 중인 토픽입니다';
+  IF v_subscription_id IS NULL THEN
+    SELECT id
+    INTO v_subscription_id
+    FROM public.subscriptions
+    WHERE user_id = auth.uid()
+      AND topic_id = p_topic_id;
   END IF;
+
+  RETURN json_build_object(
+    'subscription_id', v_subscription_id,
+    'is_subscribed', true
+  );
 END;
 $$;
 
@@ -111,6 +125,3 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION "public"."unsubscribe_topic"(bigint) TO "authenticated";
-
-
-
