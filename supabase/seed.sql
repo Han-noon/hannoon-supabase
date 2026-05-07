@@ -17,3 +17,77 @@ INSERT INTO public.events (topic_id, category, title, summary, article_count) VA
   ((SELECT id FROM public.topics WHERE title = '미중 정상회담'), '국제', '공급망 안정 협의', '양국이 핵심 산업 공급망 안정과 수출 통제 완화 방안을 논의', 4),
   ((SELECT id FROM public.topics WHERE title = '미중 정상회담'), '국제', '기후 협력 재개', '기후 변화 대응을 위한 실무 협의체 재가동에 합의', 3),
   ((SELECT id FROM public.topics WHERE title = '미중 정상회담'), '국제', '안보 현안 입장차', '대만과 남중국해 등 안보 현안을 두고 양측 입장차가 지속', 5);
+
+INSERT INTO auth.users (
+  instance_id,
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+)
+VALUES
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '11111111-1111-1111-1111-111111111111',
+    'authenticated',
+    'authenticated',
+    'demo1@example.com',
+    extensions.crypt('password123', extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"name":"Demo User 1"}'::jsonb,
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '22222222-2222-2222-2222-222222222222',
+    'authenticated',
+    'authenticated',
+    'demo2@example.com',
+    extensions.crypt('password123', extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"name":"Demo User 2"}'::jsonb,
+    now(),
+    now()
+  )
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.profiles (id, email, name)
+VALUES
+  ('11111111-1111-1111-1111-111111111111', 'demo1@example.com', 'Demo User 1'),
+  ('22222222-2222-2222-2222-222222222222', 'demo2@example.com', 'Demo User 2')
+ON CONFLICT (id) DO UPDATE
+SET
+  email = EXCLUDED.email,
+  name = EXCLUDED.name;
+
+WITH topic_slots AS (
+  SELECT
+    id,
+    row_number() OVER (ORDER BY id) AS slot
+  FROM public.topics
+  ORDER BY id
+  LIMIT 3
+),
+demo_subscriptions(user_id, topic_slot) AS (
+  VALUES
+    ('11111111-1111-1111-1111-111111111111'::uuid, 1),
+    ('11111111-1111-1111-1111-111111111111'::uuid, 2),
+    ('22222222-2222-2222-2222-222222222222'::uuid, 2),
+    ('22222222-2222-2222-2222-222222222222'::uuid, 3)
+)
+INSERT INTO public.subscriptions (user_id, topic_id)
+SELECT
+  ds.user_id,
+  ts.id
+FROM demo_subscriptions ds
+JOIN topic_slots ts ON ts.slot = ds.topic_slot
+ON CONFLICT ON CONSTRAINT subscriptions_user_id_topic_id_key DO NOTHING;
