@@ -70,9 +70,9 @@
 
 | Type | Values |
 |---|---|
-| `category` | `정치`, `경제`, `사회` |
+| `category` | `정치`, `경제`, `사회`, `국제` |
 | `article_status` | `needs_crawl`, `ready`, `crawl_failed` |
-| `bias_type` | `left`, `mid`, `right` |
+| `bias_type` | `진보`, `중도`, `보수` |
 | `content_source` | `rss`, `crawl` |
 
 ---

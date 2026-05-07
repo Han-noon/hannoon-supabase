@@ -1,8 +1,8 @@
 create type "public"."article_status" as enum ('needs_crawl', 'ready', 'crawl_failed');
 
-create type "public"."bias_type" as enum ('left', 'mid', 'right');
+create type "public"."bias_type" as enum ('진보', '중도', '보수');
 
-create type "public"."category" as enum ('정치', '경제', '사회');
+create type "public"."category" as enum ('정치', '경제', '사회', '국제');
 
 create type "public"."content_source" as enum ('rss', 'crawl');
 
