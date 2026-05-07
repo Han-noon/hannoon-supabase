@@ -10,11 +10,11 @@ INSERT INTO public.events (topic_id, category, title, summary) VALUES
   ((SELECT id FROM public.topics WHERE title = '_test_topic_aa'), '정치', '_test_event_abusing_empty', '어뷰징 기사 없는 이벤트');
 
 INSERT INTO public.articles (feed_url, guid, link, category, title, summary, content_source, publisher, published_at, bias_type, status) VALUES
-  ('https://feeds.test/aa', 8001, 'https://test.com/aa/1', '정치', '_test_abusing_article_1', '요약1', 'rss', '테스트언론', '2024-01-01 00:00:00', 'left',  'ready'),
-  ('https://feeds.test/aa', 8002, 'https://test.com/aa/2', '정치', '_test_abusing_article_2', '요약2', 'rss', '테스트언론', '2024-01-02 00:00:00', 'left',  'ready'),
-  ('https://feeds.test/aa', 8003, 'https://test.com/aa/3', '정치', '_test_abusing_article_3', '요약3', 'rss', '테스트언론', '2024-01-03 00:00:00', 'mid',   'ready'),
-  ('https://feeds.test/aa', 8004, 'https://test.com/aa/4', '정치', '_test_abusing_article_4', '요약4', 'rss', '테스트언론', '2024-01-04 00:00:00', 'mid',   'ready'),
-  ('https://feeds.test/aa', 8005, 'https://test.com/aa/5', '정치', '_test_abusing_article_5', '요약5', 'rss', '테스트언론', '2024-01-05 00:00:00', 'right', 'ready');
+  ('https://feeds.test/aa', 8001, 'https://test.com/aa/1', '정치', '_test_abusing_article_1', '요약1', 'rss', '테스트언론', '2024-01-01 00:00:00', '진보',  'ready'),
+  ('https://feeds.test/aa', 8002, 'https://test.com/aa/2', '정치', '_test_abusing_article_2', '요약2', 'rss', '테스트언론', '2024-01-02 00:00:00', '진보',  'ready'),
+  ('https://feeds.test/aa', 8003, 'https://test.com/aa/3', '정치', '_test_abusing_article_3', '요약3', 'rss', '테스트언론', '2024-01-03 00:00:00', '중도',   'ready'),
+  ('https://feeds.test/aa', 8004, 'https://test.com/aa/4', '정치', '_test_abusing_article_4', '요약4', 'rss', '테스트언론', '2024-01-04 00:00:00', '중도',   'ready'),
+  ('https://feeds.test/aa', 8005, 'https://test.com/aa/5', '정치', '_test_abusing_article_5', '요약5', 'rss', '테스트언론', '2024-01-05 00:00:00', '보수', 'ready');
 
 INSERT INTO public.event_articles (event_id, article_id) VALUES
   ((SELECT id FROM public.events WHERE title = '_test_event_abusing'), (SELECT id FROM public.articles WHERE guid = 8001)),

@@ -133,9 +133,9 @@ BEGIN
   UPDATE public.events
   SET
     article_count = article_count + 1,
-    left_count  = left_count  + CASE WHEN v_bias_type = 'left'  THEN 1 ELSE 0 END,
-    mid_count   = mid_count   + CASE WHEN v_bias_type = 'mid'   THEN 1 ELSE 0 END,
-    right_count = right_count + CASE WHEN v_bias_type = 'right' THEN 1 ELSE 0 END
+    left_count  = left_count  + CASE WHEN v_bias_type = '진보' THEN 1 ELSE 0 END,
+    mid_count   = mid_count   + CASE WHEN v_bias_type = '중도' THEN 1 ELSE 0 END,
+    right_count = right_count + CASE WHEN v_bias_type = '보수' THEN 1 ELSE 0 END
   WHERE id = NEW.event_id;
 
   RAISE LOG 'update_event_counts_on_article_insert: event_id=%, article_id=%, bias_type=%',

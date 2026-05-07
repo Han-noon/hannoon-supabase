@@ -85,9 +85,9 @@ BEGIN
 
   UPDATE public.events
   SET
-    left_count  = CASE WHEN v_bias_type = 'left'  THEN left_count  - 1 ELSE left_count  END,
-    mid_count   = CASE WHEN v_bias_type = 'mid'   THEN mid_count   - 1 ELSE mid_count   END,
-    right_count = CASE WHEN v_bias_type = 'right' THEN right_count - 1 ELSE right_count END
+    left_count  = CASE WHEN v_bias_type = '진보' THEN left_count  - 1 ELSE left_count  END,
+    mid_count   = CASE WHEN v_bias_type = '중도' THEN mid_count   - 1 ELSE mid_count   END,
+    right_count = CASE WHEN v_bias_type = '보수' THEN right_count - 1 ELSE right_count END
   WHERE id = NEW.event_id;
 
   RAISE LOG 'decrement_bias_count: event_id=%, article_id=%, bias_type=%',

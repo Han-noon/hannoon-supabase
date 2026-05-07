@@ -10,11 +10,11 @@ INSERT INTO public.events (topic_id, category, title, summary, article_count) VA
   ((SELECT id FROM public.topics WHERE title = '_test_topic_ea'), '정치', '_test_event_empty',    '기사 없는 이벤트',         0);
 
 INSERT INTO public.articles (feed_url, guid, link, category, title, summary, content_source, publisher, published_at, bias_type, status) VALUES
-  ('https://feeds.test/a', 9001, 'https://test.com/a/1', '정치', '_test_article_1', '요약1', 'rss', '테스트언론', '2024-01-01 00:00:00', 'left',  'ready'),
-  ('https://feeds.test/a', 9002, 'https://test.com/a/2', '정치', '_test_article_2', '요약2', 'rss', '테스트언론', '2024-01-02 00:00:00', 'left',  'ready'),
-  ('https://feeds.test/a', 9003, 'https://test.com/a/3', '정치', '_test_article_3', '요약3', 'rss', '테스트언론', '2024-01-03 00:00:00', 'mid',   'ready'),
-  ('https://feeds.test/a', 9004, 'https://test.com/a/4', '정치', '_test_article_4', '요약4', 'rss', '테스트언론', '2024-01-04 00:00:00', 'mid',   'ready'),
-  ('https://feeds.test/a', 9005, 'https://test.com/a/5', '정치', '_test_article_5', '요약5', 'rss', '테스트언론', '2024-01-05 00:00:00', 'right', 'ready');
+  ('https://feeds.test/a', 9001, 'https://test.com/a/1', '정치', '_test_article_1', '요약1', 'rss', '테스트언론', '2024-01-01 00:00:00', '진보',  'ready'),
+  ('https://feeds.test/a', 9002, 'https://test.com/a/2', '정치', '_test_article_2', '요약2', 'rss', '테스트언론', '2024-01-02 00:00:00', '진보',  'ready'),
+  ('https://feeds.test/a', 9003, 'https://test.com/a/3', '정치', '_test_article_3', '요약3', 'rss', '테스트언론', '2024-01-03 00:00:00', '중도',   'ready'),
+  ('https://feeds.test/a', 9004, 'https://test.com/a/4', '정치', '_test_article_4', '요약4', 'rss', '테스트언론', '2024-01-04 00:00:00', '중도',   'ready'),
+  ('https://feeds.test/a', 9005, 'https://test.com/a/5', '정치', '_test_article_5', '요약5', 'rss', '테스트언론', '2024-01-05 00:00:00', '보수', 'ready');
 
 INSERT INTO public.event_articles (event_id, article_id) VALUES
   ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = 9001)),
@@ -37,20 +37,20 @@ SELECT is(
   'get_articles_by_event: bias_type 미지정 시 전체 기사 수 반환'
 );
 
--- bias_type=left 필터
+-- bias_type=진보 필터
 SELECT is(
-  ((public.get_articles_by_event((SELECT id FROM public.events WHERE title = '_test_event_articles'), 'left'))::jsonb ->> 'total_count')::int,
+  ((public.get_articles_by_event((SELECT id FROM public.events WHERE title = '_test_event_articles'), '진보'))::jsonb ->> 'total_count')::int,
   2,
-  'get_articles_by_event: bias_type=left 필터 시 left 기사 수 반환'
+  'get_articles_by_event: bias_type=진보 필터 시 진보 기사 수 반환'
 );
 
--- bias_type=right 필터
+-- bias_type=보수 필터
 SELECT is(
   jsonb_array_length(
-    (public.get_articles_by_event((SELECT id FROM public.events WHERE title = '_test_event_articles'), 'right'))::jsonb -> 'articles'
+    (public.get_articles_by_event((SELECT id FROM public.events WHERE title = '_test_event_articles'), '보수'))::jsonb -> 'articles'
   ),
   1,
-  'get_articles_by_event: bias_type=right 필터 시 right 기사만 반환'
+  'get_articles_by_event: bias_type=보수 필터 시 보수 기사만 반환'
 );
 
 -- 페이지네이션 첫 페이지 건수
