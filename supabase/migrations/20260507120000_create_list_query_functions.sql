@@ -1,9 +1,9 @@
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA extensions;
 
-CREATE INDEX IF NOT EXISTS topics_title_trgm_idx   ON public.topics USING gin (title   gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS topics_summary_trgm_idx  ON public.topics USING gin (summary gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS events_title_trgm_idx   ON public.events USING gin (title   gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS events_summary_trgm_idx  ON public.events USING gin (summary gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS topics_title_trgm_idx   ON public.topics USING gin (title   extensions.gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS topics_summary_trgm_idx  ON public.topics USING gin (summary extensions.gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS events_title_trgm_idx   ON public.events USING gin (title   extensions.gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS events_summary_trgm_idx  ON public.events USING gin (summary extensions.gin_trgm_ops);
 
 
 CREATE OR REPLACE FUNCTION public.get_topics(
@@ -42,8 +42,8 @@ BEGIN
   WHERE
     (p_category IS NULL OR t.category = p_category)
     AND (p_search IS NULL
-         OR word_similarity(p_search, t.title)   > 0.3
-         OR word_similarity(p_search, t.summary) > 0.3);
+         OR extensions.word_similarity(p_search, t.title)   > 0.3
+         OR extensions.word_similarity(p_search, t.summary) > 0.3);
 
   v_total_pages := CEIL(v_total_count::numeric / p_size);
 
@@ -66,8 +66,8 @@ BEGIN
       WHERE
         (p_category IS NULL OR t.category = p_category)
         AND (p_search IS NULL
-             OR word_similarity(p_search, t.title)   > 0.3
-             OR word_similarity(p_search, t.summary) > 0.3)
+             OR extensions.word_similarity(p_search, t.title)   > 0.3
+             OR extensions.word_similarity(p_search, t.summary) > 0.3)
       ORDER BY t.id DESC
       LIMIT  p_size
       OFFSET (p_page - 1) * p_size
@@ -89,8 +89,8 @@ BEGIN
       WHERE
         (p_category IS NULL OR t.category = p_category)
         AND (p_search IS NULL
-             OR word_similarity(p_search, t.title)   > 0.3
-             OR word_similarity(p_search, t.summary) > 0.3)
+             OR extensions.word_similarity(p_search, t.title)   > 0.3
+             OR extensions.word_similarity(p_search, t.summary) > 0.3)
       ORDER BY t.id DESC
       LIMIT  p_size
       OFFSET (p_page - 1) * p_size
@@ -219,8 +219,8 @@ BEGIN
   WHERE
     (p_category IS NULL OR e.category = p_category)
     AND (p_search IS NULL
-         OR word_similarity(p_search, e.title)   > 0.3
-         OR word_similarity(p_search, e.summary) > 0.3);
+         OR extensions.word_similarity(p_search, e.title)   > 0.3
+         OR extensions.word_similarity(p_search, e.summary) > 0.3);
 
   v_total_pages := CEIL(v_total_count::numeric / p_size);
 
@@ -244,8 +244,8 @@ BEGIN
       WHERE
         (p_category IS NULL OR e.category = p_category)
         AND (p_search IS NULL
-             OR word_similarity(p_search, e.title)   > 0.3
-             OR word_similarity(p_search, e.summary) > 0.3)
+             OR extensions.word_similarity(p_search, e.title)   > 0.3
+             OR extensions.word_similarity(p_search, e.summary) > 0.3)
       ORDER BY e.id DESC
       LIMIT  p_size
       OFFSET (p_page - 1) * p_size
@@ -268,8 +268,8 @@ BEGIN
       WHERE
         (p_category IS NULL OR e.category = p_category)
         AND (p_search IS NULL
-             OR word_similarity(p_search, e.title)   > 0.3
-             OR word_similarity(p_search, e.summary) > 0.3)
+             OR extensions.word_similarity(p_search, e.title)   > 0.3
+             OR extensions.word_similarity(p_search, e.summary) > 0.3)
       ORDER BY e.id DESC
       LIMIT  p_size
       OFFSET (p_page - 1) * p_size
