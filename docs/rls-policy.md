@@ -26,3 +26,11 @@
 
 - 회원정보 쓰기(INSERT/UPDATE/DELETE)는 클라이언트가 직접 호출하지 않는다. 가입은 `handle_new_user` 트리거가, 수정·탈퇴는 별도 서버 함수(service_role 사용)가 담당한다.
 - `anon`은 테이블 SELECT 권한 자체가 없으므로 RLS 평가 전에 차단된다.
+
+# RLS Policies
+
+| Table | Policy | Roles | Operation |
+|---|---|---|---|
+| articles | Enable read access for all users | anon, authenticated | SELECT |
+| topics | Enable read access for all users | anon, authenticated | SELECT |
+| events | Enable read access for all users | anon, authenticated | SELECT |
