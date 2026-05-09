@@ -40,7 +40,7 @@
 
 - Language: `sql`
 - Security: `SECURITY INVOKER` (`SET search_path = ''`, RLS 적용)
-- Returns: `json` — `{ email, name, profile_image_url }`
+- Returns: `json` — `{ id, email, name, profile_image_url }`
 - 권한: `authenticated`
 
 ### `public.update_profile_image_url(new_url text)`
@@ -60,6 +60,7 @@
 | 대상 | 권한 |
 |------|------|
 | `authenticated` | `SELECT` on `profiles` |
+| `authenticated` | `UPDATE` on `profiles` |
 | `authenticated` | `EXECUTE` on `get_profile()` |
 | `authenticated` | `EXECUTE` on `update_profile_image_url(text)` |
 | `service_role` | `ALL` on `profiles` |
@@ -328,3 +329,11 @@
 | 대상 | 권한 |
 |------|------|
 | `service_role` | `ALL` on `article_jobs` |
+---
+
+## Storage Buckets
+
+| Bucket | 공개 여부 | 파일 크기 제한 | 허용 MIME |
+|--------|-----------|----------------|-----------|
+| `user_profile_images` | public | 5 MB | jpeg, png, webp |
+| `event_images` | public | 10 MB | jpeg, png, webp |
