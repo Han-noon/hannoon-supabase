@@ -117,9 +117,10 @@ SELECT is(
 
 SELECT ok(
   (public.get_event((SELECT id FROM public.events WHERE title = '이벤트1')))::jsonb
-    ?& ARRAY['id', 'topic_id', 'category', 'title', 'summary',
+    ?& ARRAY['event_id', 'topic_id', 'category', 'title', 'summary',
              'article_count', 'left_count', 'mid_count', 'right_count', 'abusing_count',
-             'event_image_url', 'created_at', 'updated_at', 'prev_event', 'next_event'],
+             'event_image_url', 'created_at', 'updated_at',
+             'prev_event_id', 'next_event_id', 'prev_event_title', 'next_event_title'],
   'get_event: 모든 컬럼 포함'
 );
 
