@@ -361,7 +361,7 @@
 | Function | Returns | Description |
 |---|---|---|
 | `create_notifications_for_new_event()` | trigger | 새 이벤트 생성 시 해당 토픽 구독자에게 알림 생성 |
-| `get_notifications(p_page int, p_size int)` | json | 본인 알림 목록 조회. 조회만 하며 `read_at`은 갱신하지 않음 |
+| `get_notifications(p_page int, p_size int)` | json | 본인 알림 목록 조회. 조회만 하며 `read_at`은 갱신하지 않음. 응답에서 `is_read`는 `read_at IS NOT NULL`로 계산 |
 | `get_unread_notification_count()` | json | `{ unread_count }` 반환 |
 | `mark_notification_as_read(p_notification_id bigint)` | json | 알림 클릭/상세 진입 시 단일 알림 읽음 처리 |
 | `mark_all_notifications_as_read()` | json | 본인의 모든 미읽음 알림 읽음 처리 |

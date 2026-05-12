@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(21);
+SELECT plan(23);
 
 SELECT has_table('public', 'notifications', 'notifications 테이블이 존재해야 한다');
 SELECT has_column('public', 'notifications', 'user_id', 'notifications.user_id 컬럼이 존재해야 한다');
@@ -88,6 +88,12 @@ SELECT is(
 );
 
 SELECT is(
+  ((public.get_notifications(NULL, NULL))::jsonb -> 'notifications' -> 0 ->> 'is_read')::boolean,
+  false,
+  'get_notifications는 읽지 않은 알림의 is_read를 false로 반환해야 한다'
+);
+
+SELECT is(
   ((public.get_unread_notification_count())::jsonb ->> 'unread_count')::int,
   1,
   'get_unread_notification_count는 읽지 않은 알림 수를 반환해야 한다'
@@ -112,6 +118,12 @@ SELECT ok(
     WHERE event_id = (SELECT id FROM public.events WHERE title = '_test_notifications_event_1')
   ),
   'mark_notification_as_read는 read_at을 설정해야 한다'
+);
+
+SELECT is(
+  ((public.get_notifications(NULL, NULL))::jsonb -> 'notifications' -> 0 ->> 'is_read')::boolean,
+  true,
+  'get_notifications는 읽은 알림의 is_read를 true로 반환해야 한다'
 );
 
 SELECT is(

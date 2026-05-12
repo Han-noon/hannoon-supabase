@@ -139,6 +139,7 @@ BEGIN
       n.id,
       n.created_at,
       n.read_at,
+      (n.read_at IS NOT NULL) AS is_read,
       n.topic_id,
       t.category AS topic_category,
       t.title AS topic_title,
