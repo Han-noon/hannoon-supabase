@@ -34,3 +34,30 @@
 | articles | Enable read access for all users | anon, authenticated | SELECT |
 | topics | Enable read access for all users | anon, authenticated | SELECT |
 | events | Enable read access for all users | anon, authenticated | SELECT |
+
+---
+
+## public.subscriptions
+
+### 정책 목록
+
+| 정책명 | 타입 | 명령 | 대상 역할 | 조건 |
+|--------|------|------|-----------|------|
+| 본인 id로만 구독 생성 | PERMISSIVE | INSERT | `authenticated` | `auth.uid() = user_id` |
+| 본인 구독 정보만 조회 | PERMISSIVE | SELECT | `authenticated` | `auth.uid() = user_id` |
+| 본인 구독만 삭제 | PERMISSIVE | DELETE | `authenticated` | `auth.uid() = user_id` |
+
+### 역할별 접근
+
+| 역할 | SELECT | INSERT | DELETE |
+|------|--------|--------|--------|
+| `anon` | ✕ (권한 없음) | ✕ | ✕ |
+| `authenticated` | 본인 행만 | 본인 user_id로만 | 본인 행만 |
+| `service_role` | RLS 우회 | RLS 우회 | RLS 우회 |
+
+### 설계 의도
+
+- 구독/구독 해제는 `subscribe_topic`, `unsubscribe_topic` RPC 함수를 통해서만 수행한다.
+- `anon`은 테이블 권한 자체가 없으므로 RLS 평가 전에 차단된다.
+- `get_topics`, `get_events`는 `anon`도 호출할 수 있지만 비로그인 시 `subscription_id = null`, `is_subscribed = false`를 반환한다.
+- `get_subscribed_topics`는 `authenticated` 전용이며 `auth.uid()` 기준 본인 구독만 반환한다.
