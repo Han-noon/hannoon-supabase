@@ -47,17 +47,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at();
 
 
-grant select on table "public"."article_ai_results" to "authenticated";
-
 grant select, insert, update, delete on table "public"."article_ai_results" to "service_role";
 grant references on table "public"."article_ai_results" to "service_role";
 grant trigger on table "public"."article_ai_results" to "service_role";
 grant truncate on table "public"."article_ai_results" to "service_role";
-
-
-create policy "No access for users"
-on "public"."article_ai_results"
-as permissive
-for select
-to authenticated
-using (false);
