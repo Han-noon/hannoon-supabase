@@ -104,7 +104,7 @@ SELECT throws_ok(
 
 -- get_event
 SELECT is(
-  (public.get_event((SELECT id FROM public.events WHERE title = '이벤트1')))::jsonb ->> 'title',
+  (public.get_event((SELECT id FROM public.events WHERE title = '이벤트1')))::jsonb ->> 'event_title',
   '이벤트1',
   'get_event: 올바른 title 반환'
 );
@@ -117,7 +117,7 @@ SELECT is(
 
 SELECT ok(
   (public.get_event((SELECT id FROM public.events WHERE title = '이벤트1')))::jsonb
-    ?& ARRAY['event_id', 'topic_id', 'category', 'title', 'summary',
+    ?& ARRAY['topic_id', 'event_id', 'topic_title', 'event_title', 'category', 'summary',
              'article_count', 'left_count', 'mid_count', 'right_count', 'abusing_count',
              'event_image_url', 'created_at', 'updated_at',
              'prev_event_id', 'next_event_id', 'prev_event_title', 'next_event_title'],
