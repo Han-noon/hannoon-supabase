@@ -120,7 +120,8 @@ SELECT ok(
     ?& ARRAY['topic_id', 'event_id', 'topic_title', 'event_title', 'category', 'summary',
              'article_count', 'left_count', 'mid_count', 'right_count', 'abusing_count',
              'event_image_url', 'created_at', 'updated_at',
-             'prev_event_id', 'next_event_id', 'prev_event_title', 'next_event_title'],
+             'prev_event_id', 'next_event_id', 'prev_event_title', 'next_event_title',
+             'subscription_id', 'is_subscribed'],
   'get_event: 모든 컬럼 포함'
 );
 
