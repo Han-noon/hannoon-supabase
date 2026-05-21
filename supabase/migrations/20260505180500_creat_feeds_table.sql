@@ -24,11 +24,3 @@ grant select, insert, update, delete on table "public"."feeds" to "service_role"
 grant references on table "public"."feeds" to "service_role";
 grant trigger on table "public"."feeds" to "service_role";
 grant truncate on table "public"."feeds" to "service_role";
-
-
-create policy "Enable read access for all users"
-on "public"."feeds"
-as permissive
-for select
-to anon, authenticated
-using (true);
