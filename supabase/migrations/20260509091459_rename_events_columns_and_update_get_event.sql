@@ -29,6 +29,14 @@ BEGIN
         ev.mid_count,
         ev.right_count,
         ev.abusing_count,
+        ARRAY(
+          SELECT DISTINCT a.publisher
+          FROM public.event_articles ea
+          JOIN public.articles a ON a.id = ea.article_id
+          LEFT JOIN public.abusing_articles ab ON ab.article_id = ea.article_id AND ab.event_id = ea.event_id
+          WHERE ea.event_id = ev.id
+            AND ab.id IS NULL
+        )                   AS publishers,
         ev.event_image_url,
         ev.created_at,
         ev.updated_at,
@@ -60,6 +68,14 @@ BEGIN
         ev.mid_count,
         ev.right_count,
         ev.abusing_count,
+        ARRAY(
+          SELECT DISTINCT a.publisher
+          FROM public.event_articles ea
+          JOIN public.articles a ON a.id = ea.article_id
+          LEFT JOIN public.abusing_articles ab ON ab.article_id = ea.article_id AND ab.event_id = ea.event_id
+          WHERE ea.event_id = ev.id
+            AND ab.id IS NULL
+        )                   AS publishers,
         ev.event_image_url,
         ev.created_at,
         ev.updated_at,
