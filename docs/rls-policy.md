@@ -34,6 +34,8 @@
 | articles | Enable read access for all users | anon, authenticated | SELECT |
 | topics | Enable read access for all users | anon, authenticated | SELECT |
 | events | Enable read access for all users | anon, authenticated | SELECT |
+| event_articles | Enable read access for all users | anon, authenticated | SELECT |
+| abusing_articles | Enable read access for all users | anon, authenticated | SELECT |
 
 ---
 
