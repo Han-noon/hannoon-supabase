@@ -220,3 +220,20 @@
 | `authenticated` | `EXECUTE` on `subscribe_topic(bigint)` |
 | `authenticated` | `EXECUTE` on `unsubscribe_topic(bigint)` |
 | `service_role` | `ALL` on `subscriptions` |
+
+# Schema
+
+## Tables
+
+### feeds
+
+| Column | Type | Nullable | Default |
+|---|---|---|---|
+| url | text | NOT NULL | — |
+| category | category | NOT NULL | — |
+| publisher | text | NOT NULL | — |
+| bias_type | bias_type | NOT NULL | — |
+| title | text | NOT NULL | — |
+| etag | text | NULL | — |
+| modified_at | timestamp | NULL | — |
+| last_checked | timestamp | NULL | — |
