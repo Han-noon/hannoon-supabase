@@ -137,8 +137,8 @@
 | event_image_url | text | NULL | — |
 | created_at | timestamp | NOT NULL | now() |
 | updated_at | timestamp | NOT NULL | now() |
-| prev_event | bigint (FK → events.id) | NULL | — |
-| next_event | bigint (FK → events.id) | NULL | — |
+| prev_event_id | bigint (FK → events.id) | NULL | — |
+| next_event_id | bigint (FK → events.id) | NULL | — |
 
 ### subscriptions
 
@@ -186,7 +186,7 @@
 | Function | Returns | Description |
 |---|---|---|
 | `get_topic(p_topic_id bigint)` | json | 단일 topic 조회. 없으면 예외 발생 |
-| `get_event(p_event_id bigint)` | json | 단일 event 조회. 없으면 예외 발생 |
+| `get_event(p_event_id bigint)` | json | 단일 event 조회. 없으면 예외 발생. `event_id`, `prev_event_id`, `next_event_id`, `prev_event_title`, `next_event_title` 포함 |
 | `get_events_by_topic(p_topic_id, p_cursor_id, p_size, p_order)` | json | cursor 기반 페이지네이션. `{ events, has_more, next_cursor }` 반환 |
 | `get_articles_by_event(p_event_id, p_bias_type, p_page, p_size, p_order)` | json | 이벤트별 기사 page 기반 페이지네이션. `{ articles, page, size, total_count, total_pages }` 반환. `articles` 항목 필드: `link, title, summary, article_image_url, publisher, published_at, bias_type`. `p_bias_type`: NULL(전체)/진보/중도/보수, `p_page` default 1 (1 미만 예외), `p_size` default 3 (1 미만 예외, 100 초과 시 클램핑), `p_order`: asc(기본)/desc |
 | `get_abusing_articles_by_event(p_event_id, p_abusing_type, p_page, p_size)` | json | 이벤트별 어뷰징 기사 page 기반 페이지네이션. `{ articles, page, size, total_count, total_pages }` 반환. `articles` 항목 필드: `link, title, summary, article_image_url, publisher, published_at`. `p_abusing_type`: NULL(전체)/title_content_mismatch/content_context_mismatch, `p_page` default 1 (1 미만 예외), `p_size` default 4 (1 미만 예외, 100 초과 시 클램핑). 정렬: id DESC(최근순) |

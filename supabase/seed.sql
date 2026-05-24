@@ -124,3 +124,60 @@ SELECT
 FROM demo_subscriptions ds
 JOIN topic_slots ts ON ts.slot = ds.topic_slot
 ON CONFLICT ON CONSTRAINT subscriptions_user_id_topic_id_key DO NOTHING;
+
+
+-- 22대 총선
+UPDATE public.events SET
+  next_event_id = (SELECT id FROM public.events WHERE title = '야당 의석 대폭 감소')
+WHERE title = '여당 과반 확보';
+
+UPDATE public.events SET
+  prev_event_id = (SELECT id FROM public.events WHERE title = '여당 과반 확보'),
+  next_event_id = (SELECT id FROM public.events WHERE title = '역대 최고 투표율')
+WHERE title = '야당 의석 대폭 감소';
+
+UPDATE public.events SET
+  prev_event_id = (SELECT id FROM public.events WHERE title = '야당 의석 대폭 감소'),
+  next_event_id = (SELECT id FROM public.events WHERE title = '주요 당선자 입장')
+WHERE title = '역대 최고 투표율';
+
+UPDATE public.events SET
+  prev_event_id = (SELECT id FROM public.events WHERE title = '역대 최고 투표율')
+WHERE title = '주요 당선자 입장';
+
+-- 기준금리 인상
+UPDATE public.events SET
+  next_event_id = (SELECT id FROM public.events WHERE title = '주식·부동산 시장 반응')
+WHERE title = '금리 0.25%p 인상 결정';
+
+UPDATE public.events SET
+  prev_event_id = (SELECT id FROM public.events WHERE title = '금리 0.25%p 인상 결정')
+WHERE title = '주식·부동산 시장 반응';
+
+-- 의대 정원 확대
+UPDATE public.events SET
+  next_event_id = (SELECT id FROM public.events WHERE title = '정부 협상 테이블 제안')
+WHERE title = '의료계 집단 휴진 예고';
+
+UPDATE public.events SET
+  prev_event_id = (SELECT id FROM public.events WHERE title = '의료계 집단 휴진 예고'),
+  next_event_id = (SELECT id FROM public.events WHERE title = '의대생 수업 거부')
+WHERE title = '정부 협상 테이블 제안';
+
+UPDATE public.events SET
+  prev_event_id = (SELECT id FROM public.events WHERE title = '정부 협상 테이블 제안')
+WHERE title = '의대생 수업 거부';
+
+-- 미중 정상회담
+UPDATE public.events SET
+  next_event_id = (SELECT id FROM public.events WHERE title = '기후 협력 재개')
+WHERE title = '공급망 안정 협의';
+
+UPDATE public.events SET
+  prev_event_id = (SELECT id FROM public.events WHERE title = '공급망 안정 협의'),
+  next_event_id = (SELECT id FROM public.events WHERE title = '안보 현안 입장차')
+WHERE title = '기후 협력 재개';
+
+UPDATE public.events SET
+  prev_event_id = (SELECT id FROM public.events WHERE title = '기후 협력 재개')
+WHERE title = '안보 현안 입장차';
