@@ -237,3 +237,51 @@
 | etag | text | NULL | — |
 | modified_at | timestamp | NULL | — |
 | last_checked | timestamp | NULL | — |
+
+# Schema
+
+## public.article_ai_results
+
+| 컬럼 | 타입 | 제약 | 기본값 |
+|------|------|------|--------|
+| `id` | `bigint` | PK, NOT NULL | identity |
+| `article_id` | `bigint` | NOT NULL, FK → `articles.id` | - |
+| `summary` | `text` | NULL | - |
+| `abuse_score` | `numeric` | NULL | - |
+| `abuse_label` | `text` | NULL | - |
+| `keywords` | `text[]` | NULL | - |
+| `status` | `article_ai_status` | NOT NULL | `pending` |
+| `last_error` | `text` | NULL | - |
+| `created_at` | `timestamp` | NOT NULL | `now()` |
+| `updated_at` | `timestamp` | NOT NULL | `now()` |
+
+---
+
+## Enum Types
+
+| Type | Values |
+|---|---|
+| `article_ai_status` | `pending`, `done`, `failed` |
+
+---
+
+## 제약조건
+
+- `article_ai_results_pkey` — `id` Primary Key  
+- `article_ai_results_article_id_fkey` — `article_id` → `articles.id` ON DELETE CASCADE  
+
+---
+
+## Row Level Security
+
+활성화됨. 정책은 [rls-policy.md](./rls-policy.md) 참고.
+
+---
+
+## 권한 (Grants)
+
+| 대상 | 권한 |
+|------|------|
+| `authenticated` | `SELECT` on `article_ai_results` *(raw GRANT only; RLS로 인해 실제 조회 결과는 0건)* |
+ | `authenticated` | `SELECT` on `article_ai_results` *(raw GRANT only; RLS로 인해 실제 조회 결과는 0건)* |
+ | `service_role` | `ALL` on `article_ai_results` |
