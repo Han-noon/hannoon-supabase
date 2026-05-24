@@ -29,8 +29,12 @@ BEGIN
         ev.mid_count,
         ev.right_count,
         ev.abusing_count,
-        ARRAY(
-          SELECT DISTINCT a.publisher
+        (
+          SELECT jsonb_build_object(
+            'left',  COALESCE(array_agg(DISTINCT a.publisher) FILTER (WHERE a.bias_type = '진보'), ARRAY[]::text[]),
+            'mid',   COALESCE(array_agg(DISTINCT a.publisher) FILTER (WHERE a.bias_type = '중도'), ARRAY[]::text[]),
+            'right', COALESCE(array_agg(DISTINCT a.publisher) FILTER (WHERE a.bias_type = '보수'), ARRAY[]::text[])
+          )
           FROM public.event_articles ea
           JOIN public.articles a ON a.id = ea.article_id
           LEFT JOIN public.abusing_articles ab ON ab.article_id = ea.article_id AND ab.event_id = ea.event_id
@@ -68,8 +72,12 @@ BEGIN
         ev.mid_count,
         ev.right_count,
         ev.abusing_count,
-        ARRAY(
-          SELECT DISTINCT a.publisher
+        (
+          SELECT jsonb_build_object(
+            'left',  COALESCE(array_agg(DISTINCT a.publisher) FILTER (WHERE a.bias_type = '진보'), ARRAY[]::text[]),
+            'mid',   COALESCE(array_agg(DISTINCT a.publisher) FILTER (WHERE a.bias_type = '중도'), ARRAY[]::text[]),
+            'right', COALESCE(array_agg(DISTINCT a.publisher) FILTER (WHERE a.bias_type = '보수'), ARRAY[]::text[])
+          )
           FROM public.event_articles ea
           JOIN public.articles a ON a.id = ea.article_id
           LEFT JOIN public.abusing_articles ab ON ab.article_id = ea.article_id AND ab.event_id = ea.event_id
