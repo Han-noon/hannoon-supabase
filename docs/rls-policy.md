@@ -63,9 +63,3 @@
 - `anon`은 테이블 권한 자체가 없으므로 RLS 평가 전에 차단된다.
 - `get_topics`, `get_events`는 `anon`도 호출할 수 있지만 비로그인 시 `subscription_id = null`, `is_subscribed = false`를 반환한다.
 - `get_subscribed_topics`는 `authenticated` 전용이며 `auth.uid()` 기준 본인 구독만 반환한다.
-
-# RLS Policies
-
-| Table | Policy | Roles | Operation |
-|---|---|---|---|
-| feeds | Enable read access for all users | anon, authenticated | SELECT |
