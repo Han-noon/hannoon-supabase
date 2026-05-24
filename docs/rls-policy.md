@@ -105,3 +105,37 @@
 - 모든 데이터 생성 및 갱신은 서버(`service_role`)에서 수행
 - `summary`, `keywords` 등은 AI 처리 결과 저장
 - `status`, `last_error`로 실패 및 재처리 흐름 관리
+# RLS Policy
+
+## 기본 방침
+
+`revoke_default_privileges` 마이그레이션으로 `anon` / `authenticated`의 `public` 스키마 기본 권한을 전부 취소하고, 테이블마다 명시적으로 필요한 권한만 부여한다.
+
+---
+
+## public.article_jobs
+
+### 정책 목록
+
+| 정책명 | 타입 | 명령 | 대상 역할 | 조건 |
+|--------|------|------|-----------|------|
+| No access for users | PERMISSIVE | SELECT | `authenticated` | `false` |
+
+---
+
+### 역할별 접근
+
+| 역할 | SELECT | INSERT | UPDATE | DELETE |
+|------|--------|--------|--------|--------|
+| `anon` | ✕ | ✕ | ✕ | ✕ |
+| `authenticated` | ✕ (항상 false) | ✕ | ✕ | ✕ |
+| `service_role` | RLS 우회 | RLS 우회 | RLS 우회 | RLS 우회 |
+
+---
+
+### 설계 의도
+
+- `article_jobs`는 AI 처리 및 크롤링 작업을 위한 내부 큐 테이블
+- 일반 사용자 접근은 완전히 차단
+- 모든 작업은 서버(`service_role`)에서만 수행
+- 실패(`failed`) 상태와 `attempts`, `last_error`를 통해 재시도 로직 구성

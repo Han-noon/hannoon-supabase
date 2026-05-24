@@ -285,3 +285,46 @@
 | `authenticated` | `SELECT` on `article_ai_results` *(raw GRANT only; RLS로 인해 실제 조회 결과는 0건)* |
  | `authenticated` | `SELECT` on `article_ai_results` *(raw GRANT only; RLS로 인해 실제 조회 결과는 0건)* |
  | `service_role` | `ALL` on `article_ai_results` |
+ # Schema
+
+## public.article_jobs
+
+| 컬럼 | 타입 | 제약 | 기본값 |
+|------|------|------|--------|
+| `id` | `bigint` | PK, NOT NULL | identity |
+| `article_id` | `bigint` | NOT NULL, FK → `articles.id` | - |
+| `status` | `article_job_status` | NOT NULL | `pending` |
+| `attempts` | `integer` | NOT NULL | `0` |
+| `last_error` | `text` | NULL | - |
+| `last_attempt_at` | `timestamp` | NULL | - |
+| `created_at` | `timestamp` | NOT NULL | `now()` |
+| `updated_at` | `timestamp` | NOT NULL | `now()` |
+
+---
+
+## Enum Types
+
+| Type | Values |
+|---|---|
+| `article_job_status` | `pending`, `sent`, `failed` |
+
+---
+
+## 제약조건
+
+- `article_jobs_pkey` — `id` Primary Key  
+- `article_jobs_article_id_fkey` — `article_id` → `articles.id` ON DELETE CASCADE  
+
+---
+
+## Row Level Security
+
+활성화됨. 정책은 [rls-policy.md](./rls-policy.md) 참고.
+
+---
+
+## 권한 (Grants)
+
+| 대상 | 권한 |
+|------|------|
+| `service_role` | `ALL` on `article_jobs` |
