@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(16);
+SELECT plan(19);
 
 -- 테스트 데이터 삽입 (트랜잭션 종료 시 롤백)
 INSERT INTO public.topics (category, title, summary) VALUES
@@ -125,11 +125,50 @@ SELECT ok(
   'get_event: 모든 컬럼 포함'
 );
 
+SELECT is(
+  (public.get_event((SELECT id FROM public.events WHERE title = '이벤트1')))::jsonb ->> 'subscription_id',
+  NULL,
+  'get_event: 비로그인 시 subscription_id = null'
+);
+
+SELECT is(
+  ((public.get_event((SELECT id FROM public.events WHERE title = '이벤트1')))::jsonb ->> 'is_subscribed')::boolean,
+  false,
+  'get_event: 비로그인 시 is_subscribed = false'
+);
+
 SELECT throws_ok(
   $$ SELECT public.get_event(999999) $$,
   '존재하지 않는 이벤트입니다',
   'get_event: 존재하지 않는 event_id 시 예외 발생'
 );
+
+-- authenticated + 구독 존재
+SET LOCAL session_replication_role = replica;
+INSERT INTO public.profiles (id, email)
+VALUES ('dddddddd-0000-0000-0000-000000000001', 'get_event_test@example.com');
+SET LOCAL session_replication_role = DEFAULT;
+
+SELECT set_config('request.jwt.claim.sub', 'dddddddd-0000-0000-0000-000000000001', true);
+SELECT set_config('request.jwt.claims', '{"sub": "dddddddd-0000-0000-0000-000000000001"}', true);
+SET LOCAL ROLE authenticated;
+
+INSERT INTO public.subscriptions (user_id, topic_id)
+VALUES (
+  'dddddddd-0000-0000-0000-000000000001',
+  (SELECT id FROM public.topics WHERE title = '_test_topic_pagination')
+);
+
+SELECT ok(
+  ((public.get_event((SELECT id FROM public.events WHERE title = '이벤트1')))::jsonb ->> 'subscription_id') IS NOT NULL
+  AND
+  ((public.get_event((SELECT id FROM public.events WHERE title = '이벤트1')))::jsonb ->> 'is_subscribed')::boolean = true,
+  'get_event: 로그인+구독 시 subscription_id IS NOT NULL, is_subscribed = true'
+);
+
+RESET ROLE;
+SELECT set_config('request.jwt.claim.sub', '', true);
+SELECT set_config('request.jwt.claims', '{}', true);
 
 SELECT * FROM finish();
 ROLLBACK;
