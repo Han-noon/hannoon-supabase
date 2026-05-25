@@ -26,8 +26,9 @@
 ### 설계 의도
 
 - INSERT/DELETE는 클라이언트가 직접 호출하지 않는다. 가입은 `handle_new_user` 트리거가, 탈퇴는 별도 서버 함수(service_role 사용)가 담당한다.
-- UPDATE는 `authenticated`가 직접 수행한다. `update_profile_image_url()` RPC 또는 직접 UPDATE 쿼리 사용 가능.
-- `anon`은 테이블 SELECT 권한 자체가 없으므로 RLS 평가 전에 차단된다.
+- 현재 로그인 방식은 Google OAuth만 사용하며, 가입 시 `handle_new_user` 트리거가 `full_name`과 `{uid}/profile` 경로를 저장한다.
+- UPDATE는 `authenticated`가 직접 수행한다.
+- `anon`은 `profiles` 테이블에 SELECT 권한 자체가 없으므로 RLS 평가 전에 차단된다. 즉, 비로그인 사용자는 `public.profiles`를 직접 조회할 수 없다.
 
 # RLS Policies
 
@@ -165,4 +166,6 @@
 ### 설계 의도
 
 - 파일 경로는 `{uid}/파일명` 형식이어야 한다. `storage.foldername(name)[1]`로 uid를 추출해 `auth.uid()`와 비교.
+- 프로필 이미지는 완성된 public URL이 아니라 `profile_image_path` (`{uid}/profile`)로 `profiles`에 저장한다.
+- public URL 조립은 클라이언트가 `profile_image_path`를 사용해 처리한다.
 - `event_images` 버킷은 RLS 정책 없음 — service_role(서버)만 업로드하고 public 읽기는 버킷 자체 공개 설정으로 허용.

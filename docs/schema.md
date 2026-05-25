@@ -8,7 +8,7 @@
 | `email` | `character varying` | UNIQUE | - |
 | `created_at` | `timestamp with time zone` | NOT NULL | `now()` |
 | `name` | `text` | - | - |
-| `profile_image_url` | `text` | - | - |
+| `profile_image_path` | `text` | - | - |
 
 ### 제약조건
 
@@ -31,8 +31,8 @@
 - Language: `plpgsql`
 - Security: `SECURITY DEFINER` (`SET search_path TO ''`)
 - 트리거: `on_auth_user_created` — `AFTER INSERT ON auth.users FOR EACH ROW`
-- Google OAuth 로그인 시: OAuth 메타데이터에서 `name`, `profile_image_url` 자동 삽입
-- 일반 가입 시: `id`, `email`만 삽입
+- 현재 로그인 방식은 Google OAuth만 사용한다.
+- Google OAuth 로그인 시: OAuth 메타데이터의 `full_name`을 `name`에 저장하고, `profile_image_path`를 `{uid}/profile` 고정 경로로 저장한다.
 
 ### `public.get_profile()`
 
@@ -40,17 +40,7 @@
 
 - Language: `sql`
 - Security: `SECURITY INVOKER` (`SET search_path = ''`, RLS 적용)
-- Returns: `json` — `{ id, email, name, profile_image_url }`
-- 권한: `authenticated`
-
-### `public.update_profile_image_url(new_url text)`
-
-현재 로그인한 유저의 `profile_image_url`을 갱신하는 RPC 함수.
-
-- Language: `sql`
-- Security: `SECURITY INVOKER` (`SET search_path = ''`)
-- Parameter: `new_url text`
-- Returns: `void`
+- Returns: `json` — `{ id, email, name, profile_image_path }`
 - 권한: `authenticated`
 
 ---
@@ -62,7 +52,6 @@
 | `authenticated` | `SELECT` on `profiles` |
 | `authenticated` | `UPDATE` on `profiles` |
 | `authenticated` | `EXECUTE` on `get_profile()` |
-| `authenticated` | `EXECUTE` on `update_profile_image_url(text)` |
 | `service_role` | `ALL` on `profiles` |
 
 # Schema
