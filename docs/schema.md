@@ -324,5 +324,5 @@
 
 | Bucket | 공개 여부 | 파일 크기 제한 | 허용 MIME |
 |--------|-----------|----------------|-----------|
-| `user_profile_images` | public | 5 MB | jpeg, png, webp |
+| `user_profile_images` | public (누구나 읽기 가능, 쓰기는 RLS로 제한) | 5 MB | jpeg, png, webp |
 | `event_images` | public | 10 MB | jpeg, png, webp |

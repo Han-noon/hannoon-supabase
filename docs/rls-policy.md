@@ -159,13 +159,14 @@
 
 | 역할 | SELECT | INSERT | UPDATE | DELETE |
 |------|--------|--------|--------|--------|
-| `anon` | ✕ | ✕ | ✕ | ✕ |
-| `authenticated` | 본인 폴더만 | 본인 폴더만 | 본인 폴더만 | 본인 폴더만 |
+| `anon` | ○ (버킷 public, RLS 우회) | ✕ | ✕ | ✕ |
+| `authenticated` | ○ (버킷 public, RLS 우회) | 본인 폴더만 | 본인 폴더만 | 본인 폴더만 |
 | `service_role` | RLS 우회 | RLS 우회 | RLS 우회 | RLS 우회 |
 
 ### 설계 의도
 
-- 파일 경로는 `{uid}/파일명` 형식이어야 한다. `storage.foldername(name)[1]`로 uid를 추출해 `auth.uid()`와 비교.
+- 버킷이 `public = true`이므로 공개 URL(`/storage/v1/object/public/user_profile_images/...`)로 누구나 읽을 수 있다. SELECT RLS는 실질적으로 적용되지 않는다.
+- RLS는 업로드·수정·삭제만 제한한다. 파일 경로는 `{uid}/파일명` 형식이어야 하며, `storage.foldername(name)[1]`로 uid를 추출해 `auth.uid()`와 비교.
 - 프로필 이미지는 완성된 public URL이 아니라 `profile_image_path` (`{uid}/profile`)로 `profiles`에 저장한다.
 - public URL 조립은 클라이언트가 `profile_image_path`를 사용해 처리한다.
 - `event_images` 버킷은 RLS 정책 없음 — service_role(서버)만 업로드하고 public 읽기는 버킷 자체 공개 설정으로 허용.
