@@ -326,3 +326,54 @@
 |--------|-----------|----------------|-----------|
 | `user_profile_images` | public (누구나 읽기 가능, 쓰기는 RLS로 제한) | 5 MB | jpeg, png, webp |
 | `event_images` | public | 10 MB | jpeg, png, webp |
+---
+
+## notifications
+
+구독한 토픽에 새 이벤트가 생성되면 사용자별 알림 내역을 저장한다.
+
+| Column | Type | Nullable | Default |
+|---|---|---|---|
+| id | bigint (identity) | NOT NULL | - |
+| created_at | timestamp | NOT NULL | now() |
+| user_id | uuid (FK -> profiles.id) | NOT NULL | - |
+| topic_id | bigint (FK -> topics.id) | NOT NULL | - |
+| event_id | bigint (FK -> events.id) | NOT NULL | - |
+| read_at | timestamp | NULL | - |
+
+제약:
+
+- `notifications_pkey` -> `id` Primary Key
+- `notifications_user_id_event_id_key` -> UNIQUE (`user_id`, `event_id`)
+- `notifications_event_id_fkey` -> `event_id` references `events(id)`
+- `notifications_topic_id_fkey` -> `topic_id` references `topics(id)`
+- `notifications_user_id_fkey` -> `user_id` references `profiles(id)`
+
+인덱스:
+
+- `notifications_user_id_created_at_idx` -> 사용자별 최신 알림 목록 조회
+- `notifications_user_id_unread_idx` -> 사용자별 미읽음 알림 카운트 조회
+
+---
+
+## Functions - notifications
+
+| Function | Returns | Description |
+|---|---|---|
+| `create_notifications_for_new_event()` | trigger | 새 이벤트 생성 시 해당 토픽 구독자에게 알림 생성 |
+| `get_notifications(p_page int, p_size int)` | json | 본인 알림 목록 조회. 조회만 하며 `read_at`은 갱신하지 않음. 응답에서 `is_read`는 `read_at IS NOT NULL`로 계산 |
+| `get_unread_notification_count()` | json | `{ unread_count }` 반환 |
+| `mark_notification_as_read(p_notification_id bigint)` | json | 알림 클릭/상세 진입 시 단일 알림 읽음 처리 |
+| `mark_all_notifications_as_read()` | json | 본인의 모든 미읽음 알림 읽음 처리 |
+| `delete_notification(p_notification_id bigint)` | void | 본인 알림 단일 삭제 |
+| `delete_all_notifications()` | json | 본인 알림 전체 삭제 |
+
+---
+
+## Grants - notifications
+
+| Role | Privileges |
+|---|---|
+| `authenticated` | `SELECT`, `UPDATE`, `DELETE` on `notifications` |
+| `authenticated` | `EXECUTE` on notification RPC functions |
+| `service_role` | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `REFERENCES`, `TRIGGER`, `TRUNCATE` on `notifications` |
