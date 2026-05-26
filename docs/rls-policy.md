@@ -179,18 +179,20 @@
 | 정책명 | 타입 | 명령 | 대상 역할 | 조건 |
 |---|---|---|---|---|
 | 본인 알림만 조회 | PERMISSIVE | SELECT | `authenticated` | `auth.uid() = user_id` |
+| 본인 알림만 수정 | PERMISSIVE | UPDATE | `authenticated` | `auth.uid() = user_id` |
+| 본인 알림만 삭제 | PERMISSIVE | DELETE | `authenticated` | `auth.uid() = user_id` |
 
 ### 역할별 접근
 
 | 역할 | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
 | `anon` | 불가 | 불가 | 불가 | 불가 |
-| `authenticated` | 본인 알림만 | 직접 접근 불가 | 직접 접근 불가 | 직접 접근 불가 |
+| `authenticated` | 본인 알림만 | 직접 접근 불가 | 본인 알림만 | 본인 알림만 |
 | `service_role` | RLS 우회 | RLS 우회 | RLS 우회 | RLS 우회 |
 
 ### 설계 의도
 
-- 알림 생성은 클라이언트가 직접 수행하지 않고 `create_notifications_for_new_event()` 트리거가 처리한다.
+- 알림 생성은 클라이언트가 직접 수행하지 않고 `create_notifications_for_new_event()` 트리거(`SECURITY DEFINER`)가 처리한다.
 - 알림 목록 조회는 `get_notifications()` RPC를 사용한다.
 - 읽음 처리는 알림 클릭/상세 진입 시 `mark_notification_as_read()`로 수행한다.
 - 배지 정리는 `mark_all_notifications_as_read()`, 전체 삭제는 `delete_all_notifications()`로 수행한다.

@@ -374,6 +374,6 @@
 
 | Role | Privileges |
 |---|---|
-| `authenticated` | `SELECT` on `notifications` |
+| `authenticated` | `SELECT`, `UPDATE`, `DELETE` on `notifications` |
 | `authenticated` | `EXECUTE` on notification RPC functions |
 | `service_role` | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `REFERENCES`, `TRIGGER`, `TRUNCATE` on `notifications` |

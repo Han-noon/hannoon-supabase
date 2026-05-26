@@ -40,7 +40,7 @@ alter table "public"."notifications" add constraint "notifications_user_id_fkey"
 
 alter table "public"."notifications" validate constraint "notifications_user_id_fkey";
 
-grant select on table "public"."notifications" to "authenticated";
+grant select, update, delete on table "public"."notifications" to "authenticated";
 
 grant delete on table "public"."notifications" to "service_role";
 
@@ -63,6 +63,23 @@ as permissive
 for select
 to authenticated
 using ((( SELECT auth.uid() AS uid) = user_id));
+
+
+create policy "본인 알림만 수정"
+on "public"."notifications"
+as permissive
+for update
+to authenticated
+using (((SELECT auth.uid()) = user_id))
+with check (((SELECT auth.uid()) = user_id));
+
+
+create policy "본인 알림만 삭제"
+on "public"."notifications"
+as permissive
+for delete
+to authenticated
+using (((SELECT auth.uid()) = user_id));
 
 
 CREATE OR REPLACE FUNCTION public.create_notifications_for_new_event()
@@ -196,7 +213,7 @@ CREATE OR REPLACE FUNCTION public.mark_notification_as_read(
 )
 RETURNS json
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $$
 DECLARE
@@ -231,7 +248,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.mark_all_notifications_as_read()
 RETURNS json
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $$
 DECLARE
@@ -258,7 +275,7 @@ CREATE OR REPLACE FUNCTION public.delete_notification(
 )
 RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $$
 BEGIN
@@ -280,7 +297,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.delete_all_notifications()
 RETURNS json
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $$
 DECLARE
