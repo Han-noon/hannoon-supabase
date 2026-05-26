@@ -13,19 +13,22 @@
 | 정책명 | 타입 | 명령 | 대상 역할 | 조건 |
 |--------|------|------|-----------|------|
 | 본인 회원정보만 조회 | PERMISSIVE | SELECT | `authenticated` | `auth.uid() = id` |
+| 본인 회원정보만 수정 | PERMISSIVE | UPDATE | `authenticated` | `auth.uid() = id` |
 
 ### 역할별 접근
 
 | 역할 | SELECT | INSERT | UPDATE | DELETE |
 |------|--------|--------|--------|--------|
 | `anon` | ✕ (권한 없음) | ✕ | ✕ | ✕ |
-| `authenticated` | 본인 행만 | ✕ | ✕ | ✕ |
+| `authenticated` | 본인 행만 | ✕ | 본인 행만 | ✕ |
 | `service_role` | RLS 우회 | RLS 우회 | RLS 우회 | RLS 우회 |
 
 ### 설계 의도
 
-- 회원정보 쓰기(INSERT/UPDATE/DELETE)는 클라이언트가 직접 호출하지 않는다. 가입은 `handle_new_user` 트리거가, 수정·탈퇴는 별도 서버 함수(service_role 사용)가 담당한다.
-- `anon`은 테이블 SELECT 권한 자체가 없으므로 RLS 평가 전에 차단된다.
+- INSERT/DELETE는 클라이언트가 직접 호출하지 않는다. 가입은 `handle_new_user` 트리거가, 탈퇴는 별도 서버 함수(service_role 사용)가 담당한다.
+- 현재 로그인 방식은 Google OAuth만 사용하며, 가입 시 `handle_new_user` 트리거가 `full_name`과 `{uid}/profile` 경로를 저장한다.
+- UPDATE는 `authenticated`가 직접 수행한다.
+- `anon`은 `profiles` 테이블에 SELECT 권한 자체가 없으므로 RLS 평가 전에 차단된다. 즉, 비로그인 사용자는 `public.profiles`를 직접 조회할 수 없다.
 
 # RLS Policies
 
@@ -139,3 +142,31 @@
 - 일반 사용자 접근은 완전히 차단
 - 모든 작업은 서버(`service_role`)에서만 수행
 - 실패(`failed`) 상태와 `attempts`, `last_error`를 통해 재시도 로직 구성
+---
+
+## storage.objects (user_profile_images)
+
+### 정책 목록
+
+| 정책명 | 타입 | 명령 | 대상 역할 | 조건 |
+|--------|------|------|-----------|------|
+| user_profile_images_select | PERMISSIVE | SELECT | `authenticated` | 본인 uid 폴더 |
+| user_profile_images_insert | PERMISSIVE | INSERT | `authenticated` | 본인 uid 폴더 |
+| user_profile_images_update | PERMISSIVE | UPDATE | `authenticated` | 본인 uid 폴더 |
+| user_profile_images_delete | PERMISSIVE | DELETE | `authenticated` | 본인 uid 폴더 |
+
+### 역할별 접근
+
+| 역할 | SELECT | INSERT | UPDATE | DELETE |
+|------|--------|--------|--------|--------|
+| `anon` | ○ (버킷 public, RLS 우회) | ✕ | ✕ | ✕ |
+| `authenticated` | ○ (버킷 public, RLS 우회) | 본인 폴더만 | 본인 폴더만 | 본인 폴더만 |
+| `service_role` | RLS 우회 | RLS 우회 | RLS 우회 | RLS 우회 |
+
+### 설계 의도
+
+- 버킷이 `public = true`이므로 공개 URL(`/storage/v1/object/public/user_profile_images/...`)로 누구나 읽을 수 있다. SELECT RLS는 실질적으로 적용되지 않는다.
+- RLS는 업로드·수정·삭제만 제한한다. 파일 경로는 `{uid}/파일명` 형식이어야 하며, `storage.foldername(name)[1]`로 uid를 추출해 `auth.uid()`와 비교.
+- 프로필 이미지는 완성된 public URL이 아니라 `profile_image_path` (`{uid}/profile`)로 `profiles`에 저장한다.
+- public URL 조립은 클라이언트가 `profile_image_path`를 사용해 처리한다.
+- `event_images` 버킷은 RLS 정책 없음 — service_role(서버)만 업로드하고 public 읽기는 버킷 자체 공개 설정으로 허용.
