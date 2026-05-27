@@ -73,6 +73,7 @@
 | Extension | Schema | Usage |
 |---|---|---|
 | `pg_trgm` | `extensions` | topics/events 검색용 `extensions.word_similarity`, `extensions.gin_trgm_ops` |
+| `vector` | `extensions` | articles/events 임베딩 저장 및 유사도 검색 (ko-sroberta-multitask, 768차원) |
 
 ---
 
@@ -98,6 +99,7 @@
 | article_image_url | text | NULL | — |
 | created_at | timestamp | NOT NULL | now() |
 | updated_at | timestamp | NOT NULL | now() |
+| embedding | vector(768) | NULL | — |
 
 ### topics
 
@@ -115,7 +117,7 @@
 | Column | Type | Nullable | Default |
 |---|---|---|---|
 | id | bigint (identity) | NOT NULL | — |
-| topic_id | bigint (FK → topics.id) | NOT NULL | — |
+| topic_id | bigint (FK → topics.id) | NULL | — |
 | category | category | NOT NULL | — |
 | title | text | NOT NULL | — |
 | summary | text | NOT NULL | — |
@@ -129,6 +131,7 @@
 | updated_at | timestamp | NOT NULL | now() |
 | prev_event_id | bigint (FK → events.id) | NULL | — |
 | next_event_id | bigint (FK → events.id) | NULL | — |
+| embedding | vector(768) | NULL | — |
 
 ### subscriptions
 
@@ -157,6 +160,17 @@
 | event_id | bigint (FK → events.id) | NOT NULL | — |
 | article_id | bigint (FK → articles.id) | NOT NULL | — |
 | type | abusing_type | NOT NULL | — |
+
+### topic_causes
+
+각 토픽에서 서버가 추출한 원인 문장 및 임베딩 저장.
+
+| Column | Type | Nullable | Default |
+|---|---|---|---|
+| id | bigint (identity) | NOT NULL | — |
+| topic_id | bigint (FK → topics.id) | NOT NULL | — |
+| cause_text | text | NOT NULL | — |
+| cause_embedding | vector(768) | NULL | — |
 
 ---
 
