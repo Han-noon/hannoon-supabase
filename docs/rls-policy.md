@@ -25,7 +25,8 @@
 
 ### 설계 의도
 
-- INSERT/DELETE는 클라이언트가 직접 호출하지 않는다. 가입은 `handle_new_user` 트리거가, 탈퇴는 별도 서버 함수(service_role 사용)가 담당한다.
+- INSERT/DELETE는 클라이언트가 직접 호출하지 않는다. 가입은 `handle_new_user` 트리거가, 탈퇴는 `delete_user()` RPC(`SECURITY DEFINER`, `authenticated` 호출)가 담당한다. 이 함수는 `auth.users`의 본인 행을 삭제하며, `profiles` → `subscriptions`/`notifications`가 FK ON DELETE CASCADE로 연쇄 삭제된다. (`authenticated`는 `profiles`에 직접 DELETE 권한이 없고, DEFINER 함수를 통해서만 삭제된다.)
+- Supabase 대시보드에서의 유저 삭제는 이 RPC가 아니라 GoTrue Admin API(`DELETE /admin/users/{id}`)로 `auth.users`를 직접 지우며, 동일한 FK CASCADE로 관련 데이터가 정리된다.
 - 현재 로그인 방식은 Google OAuth만 사용하며, 가입 시 `handle_new_user` 트리거가 `full_name`과 `{uid}/profile` 경로를 저장한다.
 - UPDATE는 `authenticated`가 직접 수행한다.
 - `anon`은 `profiles` 테이블에 SELECT 권한 자체가 없으므로 RLS 평가 전에 차단된다. 즉, 비로그인 사용자는 `public.profiles`를 직접 조회할 수 없다.
@@ -63,6 +64,7 @@
 ### 설계 의도
 
 - 구독/구독 해제는 `subscribe_topic`, `unsubscribe_topic` RPC 함수를 통해서만 수행한다.
+- 회원 탈퇴 시 `user_id` FK의 ON DELETE CASCADE로 본인 구독이 연쇄 삭제된다.
 - `anon`은 테이블 권한 자체가 없으므로 RLS 평가 전에 차단된다.
 - `get_topics`, `get_events`는 `anon`도 호출할 수 있지만 비로그인 시 `subscription_id = null`, `is_subscribed = false`를 반환한다.
 - `get_subscribed_topics`는 `authenticated` 전용이며 `auth.uid()` 기준 본인 구독만 반환한다.
@@ -196,3 +198,4 @@
 - 알림 목록 조회는 `get_notifications()` RPC를 사용한다.
 - 읽음 처리는 알림 클릭/상세 진입 시 `mark_notification_as_read()`로 수행한다.
 - 배지 정리는 `mark_all_notifications_as_read()`, 전체 삭제는 `delete_all_notifications()`로 수행한다.
+- 회원 탈퇴 시 `user_id` FK의 ON DELETE CASCADE로 본인 알림이 연쇄 삭제된다.
