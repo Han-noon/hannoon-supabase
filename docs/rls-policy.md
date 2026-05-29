@@ -199,3 +199,30 @@
 - 읽음 처리는 알림 클릭/상세 진입 시 `mark_notification_as_read()`로 수행한다.
 - 배지 정리는 `mark_all_notifications_as_read()`, 전체 삭제는 `delete_all_notifications()`로 수행한다.
 - 회원 탈퇴 시 `user_id` FK의 ON DELETE CASCADE로 본인 알림이 연쇄 삭제된다.
+
+---
+
+## public.viewed_events
+
+### 정책 목록
+
+| 정책명 | 타입 | 명령 | 대상 역할 | 조건 |
+|---|---|---|---|---|
+| 본인 조회 기록만 조회 | PERMISSIVE | SELECT | `authenticated` | `auth.uid() = user_id` |
+| 본인 id로만 조회 기록 생성 | PERMISSIVE | INSERT | `authenticated` | `auth.uid() = user_id` |
+| 본인 조회 기록만 수정 | PERMISSIVE | UPDATE | `authenticated` | `auth.uid() = user_id` |
+
+### 역할별 접근
+
+| 역할 | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| `anon` | 불가 | 불가 | 불가 | 불가 |
+| `authenticated` | 본인 기록만 | 본인 user_id로만 | 본인 기록만 | 불가 |
+| `service_role` | RLS 우회 | RLS 우회 | RLS 우회 | RLS 우회 |
+
+### 설계 의도
+
+- 조회 기록 생성/갱신은 `get_event()` RPC(`SECURITY INVOKER`)가 사용자 컨텍스트에서 upsert 하므로 `authenticated`에 INSERT/UPDATE 정책이 필요하다.
+- `anon`은 테이블 권한 자체가 없으므로 RLS 평가 전에 차단된다. `get_event`를 `anon`이 호출해도 `auth.uid()`가 NULL이라 기록하지 않는다.
+- 최근 본 이벤트 목록 조회는 `get_viewed_events()` RPC(`authenticated` 전용, 최근 일주일 범위)를 사용한다.
+- DELETE는 클라이언트가 직접 수행하지 않는다(필요 시 `service_role`).

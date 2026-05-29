@@ -206,7 +206,7 @@
 | Function | Returns | Description |
 |---|---|---|
 | `get_topic(p_topic_id bigint)` | json | 단일 topic 조회. 없으면 예외 발생 |
-| `get_event(p_event_id bigint)` | json | 단일 event 조회. 없으면 예외 발생. `event_id`, `prev_event_id`, `next_event_id`, `prev_event_title`, `next_event_title` 포함 |
+| `get_event(p_event_id bigint)` | json | 단일 event 조회. 없으면 예외 발생. `event_id`, `prev_event_id`, `next_event_id`, `prev_event_title`, `next_event_title` 포함. 로그인 사용자가 호출하면 `viewed_events`에 조회 기록을 upsert(최근 본 이벤트) → `VOLATILE` 함수 |
 | `get_events_by_topic(p_topic_id, p_cursor_id, p_size, p_order)` | json | cursor 기반 페이지네이션. `{ events, has_more, next_cursor }` 반환 |
 | `get_articles_by_event(p_event_id, p_bias_type, p_page, p_size, p_order)` | json | 이벤트별 기사 page 기반 페이지네이션. `{ articles, page, size, total_count, total_pages }` 반환. `articles` 항목 필드: `link, title, summary, article_image_url, publisher, published_at, bias_type`. `p_bias_type`: NULL(전체)/진보/중도/보수, `p_page` default 1 (1 미만 예외), `p_size` default 3 (1 미만 예외, 100 초과 시 클램핑), `p_order`: asc(기본)/desc |
 | `get_abusing_articles_by_event(p_event_id, p_abusing_type, p_page, p_size)` | json | 이벤트별 어뷰징 기사 page 기반 페이지네이션. `{ articles, page, size, total_count, total_pages }` 반환. `articles` 항목 필드: `link, title, summary, article_image_url, publisher, published_at`. `p_abusing_type`: NULL(전체)/title_content_mismatch/content_context_mismatch, `p_page` default 1 (1 미만 예외), `p_size` default 4 (1 미만 예외, 100 초과 시 클램핑). 정렬: id DESC(최근순) |
@@ -434,3 +434,48 @@ DB 트리거(`notify_onesignal_after_notification_insert`)가 호출하는 Deno 
 | `WEBHOOK_SECRET` | GitHub Secrets → `supabase secrets set` |
 | `ONESIGNAL_APP_ID` | GitHub Secrets → `supabase secrets set` |
 | `ONESIGNAL_REST_API_KEY` | GitHub Secrets → `supabase secrets set` |
+
+---
+
+## viewed_events
+
+사용자가 열람한 이벤트와 마지막 조회 시각을 저장한다(최근 본 이벤트). 기록은 `get_event` 호출 시 upsert 된다.
+
+| Column | Type | Nullable | Default |
+|---|---|---|---|
+| id | bigint (identity) | NOT NULL | - |
+| user_id | uuid (FK -> profiles.id) | NOT NULL | - |
+| event_id | bigint (FK -> events.id) | NOT NULL | - |
+| viewed_at | timestamp | NOT NULL | now() |
+
+제약:
+
+- `viewed_events_pkey` -> `id` Primary Key
+- `viewed_events_user_id_event_id_key` -> UNIQUE (`user_id`, `event_id`) — 사용자별 이벤트당 1행, upsert ON CONFLICT 대상
+- `viewed_events_user_id_fkey` -> `user_id` references `profiles(id)`
+- `viewed_events_event_id_fkey` -> `event_id` references `events(id)`
+
+인덱스:
+
+- `viewed_events_user_id_idx`
+- `viewed_events_user_id_event_id_key` (UNIQUE)
+- `viewed_events_viewed_at_idx` -> viewed_at 정렬/일주일 범위 필터
+
+---
+
+## Functions - viewed_events
+
+| Function | Returns | Description |
+|---|---|---|
+| `get_event(p_event_id bigint)` | json | (갱신) 단건 이벤트 조회 시 로그인 사용자의 조회 기록을 `viewed_events`에 upsert. 같은 이벤트 재조회 시 `viewed_at`만 갱신, `anon` 호출은 기록하지 않음 |
+| `get_viewed_events(p_page int, p_size int)` | json | 최근 일주일 내 본인이 조회한 이벤트 목록. `{ events, page, size, total_count, total_pages }` 반환, 정렬 `viewed_at DESC`. `p_page` default 1, `p_size` default 9(1 미만 예외, 100 초과 시 클램핑). 항목 필드: `event_id, topic_id, topic_title, event_title, category, summary, created_at, updated_at, viewed_at, subscription_id, is_subscribed`. 비로그인 시 예외 |
+
+---
+
+## Grants - viewed_events
+
+| Role | Privileges |
+|---|---|
+| `authenticated` | `SELECT`, `INSERT`, `UPDATE` on `viewed_events` |
+| `authenticated` | `EXECUTE` on `get_viewed_events(int, int)` |
+| `service_role` | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `REFERENCES`, `TRIGGER`, `TRUNCATE` on `viewed_events` |
