@@ -457,9 +457,8 @@ DB 트리거(`notify_onesignal_after_notification_insert`)가 호출하는 Deno 
 
 인덱스:
 
-- `viewed_events_user_id_idx`
-- `viewed_events_user_id_event_id_key` (UNIQUE)
-- `viewed_events_viewed_at_idx` -> viewed_at 정렬/일주일 범위 필터
+- `viewed_events_user_id_event_id_key` (UNIQUE) -> upsert 대상이자 user_id 단독 조회도 커버
+- `viewed_events_user_id_viewed_at_idx` -> 사용자별 최신순 페이지네이션(user_id 필터 + viewed_at 정렬) 커버
 
 ---
 

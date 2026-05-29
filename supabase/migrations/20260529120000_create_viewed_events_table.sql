@@ -29,9 +29,8 @@ alter table "public"."viewed_events" add constraint "viewed_events_event_id_fkey
 alter table "public"."viewed_events" validate constraint "viewed_events_event_id_fkey";
 
 -- 인덱스
-CREATE INDEX viewed_events_user_id_idx ON public.viewed_events USING btree (user_id);
-
 -- (user_id, event_id) 유니크: 사용자별 이벤트당 1행 보장 → get_event 의 upsert ON CONFLICT 대상
+-- (선행 컬럼이 user_id 라 user_id 단독 조회도 커버하므로 별도 user_id 인덱스는 두지 않음)
 CREATE UNIQUE INDEX viewed_events_user_id_event_id_key
   ON public.viewed_events USING btree (user_id, event_id);
 
@@ -39,8 +38,9 @@ ALTER TABLE "public"."viewed_events"
   ADD CONSTRAINT "viewed_events_user_id_event_id_key"
   UNIQUE USING INDEX "viewed_events_user_id_event_id_key";
 
--- viewed_at 정렬/일주일 범위 필터용
-CREATE INDEX viewed_events_viewed_at_idx ON public.viewed_events USING btree (viewed_at);
+-- (user_id, viewed_at DESC): get_viewed_events 의 사용자별 최신순 페이지네이션(필터+정렬) 커버
+CREATE INDEX viewed_events_user_id_viewed_at_idx
+  ON public.viewed_events USING btree (user_id, viewed_at DESC);
 
 -- 권한: get_event(INVOKER) 가 사용자 컨텍스트에서 INSERT/UPDATE 하므로 insert/update 필요
 grant select, insert, update on table "public"."viewed_events" to "authenticated";
