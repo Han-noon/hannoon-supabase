@@ -9,13 +9,13 @@ INSERT INTO public.events (topic_id, category, title, summary) VALUES
   ((SELECT id FROM public.topics WHERE title = '_test_topic_trigger'), '정치', '_test_event_trigger', '카운트 트리거 테스트용 이벤트');
 
 INSERT INTO public.articles (feed_url, guid, link, category, title, summary, content_source, publisher, published_at, bias_type, status) VALUES
-  ('https://feeds.test/t', 8001, 'https://test.com/t/1', '정치', '_test_trigger_left',  '요약', 'rss', '테스트언론', '2024-01-01 00:00:00', '진보',  'ready'),
-  ('https://feeds.test/t', 8002, 'https://test.com/t/2', '정치', '_test_trigger_mid',   '요약', 'rss', '테스트언론', '2024-01-02 00:00:00', '중도',   'ready'),
-  ('https://feeds.test/t', 8003, 'https://test.com/t/3', '정치', '_test_trigger_right', '요약', 'rss', '테스트언론', '2024-01-03 00:00:00', '보수', 'ready');
+  ('https://feeds.test/t', '8001', 'https://test.com/t/1', '정치', '_test_trigger_left',  '요약', 'rss', '테스트언론', '2024-01-01 00:00:00', '진보',  'ready'),
+  ('https://feeds.test/t', '8002', 'https://test.com/t/2', '정치', '_test_trigger_mid',   '요약', 'rss', '테스트언론', '2024-01-02 00:00:00', '중도',   'ready'),
+  ('https://feeds.test/t', '8003', 'https://test.com/t/3', '정치', '_test_trigger_right', '요약', 'rss', '테스트언론', '2024-01-03 00:00:00', '보수', 'ready');
 
 -- 진보 기사 삽입
 INSERT INTO public.event_articles (event_id, article_id) VALUES
-  ((SELECT id FROM public.events WHERE title = '_test_event_trigger'), (SELECT id FROM public.articles WHERE guid = 8001));
+  ((SELECT id FROM public.events WHERE title = '_test_event_trigger'), (SELECT id FROM public.articles WHERE guid = '8001'));
 
 SELECT is(
   (SELECT article_count FROM public.events WHERE title = '_test_event_trigger'),
@@ -43,7 +43,7 @@ SELECT is(
 
 -- 중도 기사 삽입
 INSERT INTO public.event_articles (event_id, article_id) VALUES
-  ((SELECT id FROM public.events WHERE title = '_test_event_trigger'), (SELECT id FROM public.articles WHERE guid = 8002));
+  ((SELECT id FROM public.events WHERE title = '_test_event_trigger'), (SELECT id FROM public.articles WHERE guid = '8002'));
 
 SELECT is(
   (SELECT article_count FROM public.events WHERE title = '_test_event_trigger'),
@@ -59,7 +59,7 @@ SELECT is(
 
 -- 보수 기사 삽입
 INSERT INTO public.event_articles (event_id, article_id) VALUES
-  ((SELECT id FROM public.events WHERE title = '_test_event_trigger'), (SELECT id FROM public.articles WHERE guid = 8003));
+  ((SELECT id FROM public.events WHERE title = '_test_event_trigger'), (SELECT id FROM public.articles WHERE guid = '8003'));
 
 SELECT is(
   (SELECT article_count FROM public.events WHERE title = '_test_event_trigger'),

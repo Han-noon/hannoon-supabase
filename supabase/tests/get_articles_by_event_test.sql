@@ -10,18 +10,18 @@ INSERT INTO public.events (topic_id, category, title, summary, article_count) VA
   ((SELECT id FROM public.topics WHERE title = '_test_topic_ea'), '정치', '_test_event_empty',    '기사 없는 이벤트',         0);
 
 INSERT INTO public.articles (feed_url, guid, link, category, title, summary, content_source, publisher, published_at, bias_type, status) VALUES
-  ('https://feeds.test/a', 9001, 'https://test.com/a/1', '정치', '_test_article_1', '요약1', 'rss', '테스트언론', '2024-01-01 00:00:00', '진보',  'ready'),
-  ('https://feeds.test/a', 9002, 'https://test.com/a/2', '정치', '_test_article_2', '요약2', 'rss', '테스트언론', '2024-01-02 00:00:00', '진보',  'ready'),
-  ('https://feeds.test/a', 9003, 'https://test.com/a/3', '정치', '_test_article_3', '요약3', 'rss', '테스트언론', '2024-01-03 00:00:00', '중도',   'ready'),
-  ('https://feeds.test/a', 9004, 'https://test.com/a/4', '정치', '_test_article_4', '요약4', 'rss', '테스트언론', '2024-01-04 00:00:00', '중도',   'ready'),
-  ('https://feeds.test/a', 9005, 'https://test.com/a/5', '정치', '_test_article_5', '요약5', 'rss', '테스트언론', '2024-01-05 00:00:00', '보수', 'ready');
+  ('https://feeds.test/a', '9001', 'https://test.com/a/1', '정치', '_test_article_1', '요약1', 'rss', '테스트언론', '2024-01-01 00:00:00', '진보',  'ready'),
+  ('https://feeds.test/a', '9002', 'https://test.com/a/2', '정치', '_test_article_2', '요약2', 'rss', '테스트언론', '2024-01-02 00:00:00', '진보',  'ready'),
+  ('https://feeds.test/a', '9003', 'https://test.com/a/3', '정치', '_test_article_3', '요약3', 'rss', '테스트언론', '2024-01-03 00:00:00', '중도',   'ready'),
+  ('https://feeds.test/a', '9004', 'https://test.com/a/4', '정치', '_test_article_4', '요약4', 'rss', '테스트언론', '2024-01-04 00:00:00', '중도',   'ready'),
+  ('https://feeds.test/a', '9005', 'https://test.com/a/5', '정치', '_test_article_5', '요약5', 'rss', '테스트언론', '2024-01-05 00:00:00', '보수', 'ready');
 
 INSERT INTO public.event_articles (event_id, article_id) VALUES
-  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = 9001)),
-  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = 9002)),
-  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = 9003)),
-  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = 9004)),
-  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = 9005));
+  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = '9001')),
+  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = '9002')),
+  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = '9003')),
+  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = '9004')),
+  ((SELECT id FROM public.events WHERE title = '_test_event_articles'), (SELECT id FROM public.articles WHERE guid = '9005'));
 
 -- 응답 필드 포함 확인
 SELECT ok(
