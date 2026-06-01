@@ -8,6 +8,7 @@ on:
 
 jobs:
   deploy:
+    # CI 워크플로우가 성공한 경우에만 실행
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     name: Migrate Dev DB
     runs-on: ubuntu-latest
@@ -23,11 +24,42 @@ jobs:
           version: 2.95.4
 
       - name: Link to dev project
+        # GitHub Secrets: DEV_PROJECT_REF, SUPABASE_ACCESS_TOKEN
         run: supabase link --project-ref ${{ secrets.DEV_PROJECT_REF }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Run migrations on dev
         run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Set DB config params
+        # DB 트리거 함수가 current_setting()으로 읽는 런타임 파라미터 주입
+        # - edge_function_url: 트리거 → edge function 호출 URL
+        # - webhook_secret: 트리거 → edge function 인증용 공유 시크릿
+        run: |
+          supabase db execute << 'SQL'
+          ALTER DATABASE postgres SET "app.settings.edge_function_url"
+            TO 'https://${{ secrets.DEV_PROJECT_REF }}.supabase.co/functions/v1';
+          ALTER DATABASE postgres SET "app.settings.webhook_secret"
+            TO '${{ secrets.WEBHOOK_SECRET }}';
+          SQL
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy Edge Function
+        run: supabase functions deploy notify-onesignal
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Set Edge Function secrets
+        # GitHub Secrets: ONESIGNAL_APP_ID, ONESIGNAL_REST_API_KEY, WEBHOOK_SECRET
+        # SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY는 Supabase가 자동 주입
+        run: |
+          supabase secrets set \
+            ONESIGNAL_APP_ID=${{ secrets.ONESIGNAL_APP_ID }} \
+            ONESIGNAL_REST_API_KEY=${{ secrets.ONESIGNAL_REST_API_KEY }} \
+            WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

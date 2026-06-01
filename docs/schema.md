@@ -74,6 +74,7 @@
 |---|---|---|
 | `pg_trgm` | `extensions` | topics/events 검색용 `extensions.word_similarity`, `extensions.gin_trgm_ops` |
 | `vector` | `extensions` | articles/events 임베딩 저장 및 유사도 검색 (ko-sroberta-multitask, 768차원) |
+| `pg_net` | `extensions` | DB 트리거에서 비동기 HTTP 요청 (`net.http_post`) |
 
 ---
 
@@ -381,6 +382,7 @@
 | `mark_all_notifications_as_read()` | json | 본인의 모든 미읽음 알림 읽음 처리 |
 | `delete_notification(p_notification_id bigint)` | void | 본인 알림 단일 삭제 |
 | `delete_all_notifications()` | json | 본인 알림 전체 삭제 |
+| `notify_onesignal_on_notification_insert()` | trigger | notifications INSERT 시 `net.http_post()`로 `notify-onesignal` edge function을 비동기 호출. `app.settings.edge_function_url`에서 URL, `app.settings.webhook_secret`으로 인증 |
 
 ---
 
@@ -391,3 +393,29 @@
 | `authenticated` | `SELECT`, `UPDATE`, `DELETE` on `notifications` |
 | `authenticated` | `EXECUTE` on notification RPC functions |
 | `service_role` | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `REFERENCES`, `TRIGGER`, `TRUNCATE` on `notifications` |
+
+---
+
+## Edge Functions
+
+### `notify-onesignal`
+
+DB 트리거(`notify_onesignal_after_notification_insert`)가 호출하는 Deno edge function.
+
+| 항목 | 내용 |
+|---|---|
+| 인증 | `WEBHOOK_SECRET`으로 트리거 외 호출 차단. 미설정 시 검증 생략 (로컬 개발 편의) |
+| topic 조회 | Supabase service role로 `topics.title` 조회 |
+| 푸시 발송 | OneSignal v2 API — `include_aliases.external_id` 타겟팅, `target_channel: "push"` |
+| 메시지 | `"{topic_title}에 새로운 사건이 등록되었습니다."` (ko/en 동일) |
+| payload | `notification_id`, `event_id`, `topic_id` |
+
+**환경변수**
+
+| 변수 | 주입 방식 |
+|---|---|
+| `SUPABASE_URL` | Supabase 자동 주입 |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 자동 주입 |
+| `WEBHOOK_SECRET` | GitHub Secrets → `supabase secrets set` |
+| `ONESIGNAL_APP_ID` | GitHub Secrets → `supabase secrets set` |
+| `ONESIGNAL_REST_API_KEY` | GitHub Secrets → `supabase secrets set` |
