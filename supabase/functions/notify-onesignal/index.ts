@@ -1,5 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import * as OneSignal from "npm:@onesignal/node-onesignal";
+import * as OneSignal from "npm:@onesignal/node-onesignal@5.7.0";
 
 interface NotificationRecord {
   id: number;
