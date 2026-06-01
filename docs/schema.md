@@ -43,6 +43,17 @@
 - Returns: `json` — `{ id, email, name, profile_image_path }`
 - 권한: `authenticated`
 
+### `public.delete_user()`
+
+현재 로그인한 유저가 본인 계정을 탈퇴하는 RPC 함수.
+
+- Language: `plpgsql`
+- Security: `SECURITY DEFINER` (`SET search_path = ''`)
+- Returns: `void`
+- 권한: `authenticated`
+- 동작: `auth.uid()`가 NULL이면 `'로그인이 필요합니다.'` 예외. 아니면 `auth.users`의 본인 행을 삭제하며, `profiles`(ON DELETE CASCADE) → `subscriptions`/`notifications`(ON DELETE CASCADE)까지 연쇄 삭제된다.
+- 프로필 이미지(`user_profile_images/{uid}/profile`) 삭제는 클라이언트가 탈퇴 전 Storage SDK로 직접 수행한다.
+
 ---
 
 ## 권한 (Grants)
@@ -52,6 +63,7 @@
 | `authenticated` | `SELECT` on `profiles` |
 | `authenticated` | `UPDATE` on `profiles` |
 | `authenticated` | `EXECUTE` on `get_profile()` |
+| `authenticated` | `EXECUTE` on `delete_user()` |
 | `service_role` | `ALL` on `profiles` |
 
 # Schema
@@ -143,7 +155,10 @@
 | topic_id | bigint (FK → topics.id) | NOT NULL | — |
 | created_at | timestamp | NOT NULL | now() |
 
-제약: `subscriptions_user_id_topic_id_key` — UNIQUE (user_id, topic_id)
+제약:
+
+- `subscriptions_user_id_topic_id_key` — UNIQUE (user_id, topic_id)
+- `subscriptions_user_id_fkey` — `user_id` → `profiles(id)` ON DELETE CASCADE (회원 탈퇴 시 연쇄 삭제)
 
 ### event_articles
 
@@ -362,7 +377,7 @@
 - `notifications_user_id_event_id_key` -> UNIQUE (`user_id`, `event_id`)
 - `notifications_event_id_fkey` -> `event_id` references `events(id)`
 - `notifications_topic_id_fkey` -> `topic_id` references `topics(id)`
-- `notifications_user_id_fkey` -> `user_id` references `profiles(id)`
+- `notifications_user_id_fkey` -> `user_id` references `profiles(id)` ON DELETE CASCADE (회원 탈퇴 시 연쇄 삭제)
 
 인덱스:
 
