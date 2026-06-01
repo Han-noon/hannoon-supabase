@@ -145,6 +145,7 @@
 | prev_event_id | bigint (FK → events.id) | NULL | — |
 | next_event_id | bigint (FK → events.id) | NULL | — |
 | embedding | vector(768) | NULL | — |
+| reason | text | NULL | — |
 
 ### subscriptions
 
@@ -167,6 +168,7 @@
 | id | bigint (identity) | NOT NULL | — |
 | event_id | bigint (FK → events.id) | NOT NULL | — |
 | article_id | bigint (FK → articles.id) | NOT NULL | — |
+| reason | text | NULL | — |
 
 ### abusing_articles
 
@@ -176,6 +178,7 @@
 | event_id | bigint (FK → events.id) | NOT NULL | — |
 | article_id | bigint (FK → articles.id) | NOT NULL | — |
 | type | abusing_type | NOT NULL | — |
+| reason | text | NULL | — |
 
 ### topic_causes
 
