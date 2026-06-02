@@ -1,0 +1,1 @@
+ALTER TABLE public.article_ai_results ADD CONSTRAINT article_ai_results_article_id_key UNIQUE (article_id);
