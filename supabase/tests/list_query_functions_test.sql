@@ -123,8 +123,8 @@ SELECT ok(
 
 SELECT ok(
   (public.get_events(NULL, NULL, 1, 9))::jsonb -> 'events' -> 0
-    ?& ARRAY['event_id', 'topic_id', 'category', 'title', 'summary', 'created_at', 'updated_at', 'subscription_id', 'is_subscribed'],
-  'get_events: 아이템 필드 확인 (event_id 포함, id 아님)'
+    ?& ARRAY['event_id', 'topic_id', 'topic_title', 'event_title', 'category', 'summary', 'created_at', 'updated_at', 'subscription_id', 'is_subscribed'],
+  'get_events: 아이템 필드 확인 (event_id, topic_title, event_title 포함)'
 );
 
 SELECT is(
