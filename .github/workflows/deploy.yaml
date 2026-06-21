@@ -49,7 +49,9 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Deploy Edge Function
-        run: supabase functions deploy notify-onesignal
+        # 트리거가 공유 시크릿(WEBHOOK_SECRET)으로 자체 인증하는 공개 웹훅이므로
+        # 게이트웨이 JWT 검증을 비활성화해야 트리거 호출이 401로 막히지 않는다.
+        run: supabase functions deploy notify-onesignal --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
