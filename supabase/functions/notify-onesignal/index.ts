@@ -55,6 +55,8 @@ Deno.serve(async (req: Request) => {
     event_id: record.event_id,
     topic_id: record.topic_id,
   };
+  // 클릭 시 열 URL을 서버에서 지정 (웹 푸시는 OneSignal 기본 서비스워커가 직접 엶)
+  notification.url = `https://d2bpw1mru85w1q.cloudfront.net/event-detail/${record.event_id}`;
 
   try {
     await client.createNotification(notification);
