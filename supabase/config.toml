@@ -395,6 +395,11 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# notify-onesignal은 DB 트리거가 공유 시크릿(WEBHOOK_SECRET)으로 자체 인증하는
+# 공개 웹훅이므로, 게이트웨이의 JWT 검증을 비활성화해야 트리거 호출이 통과된다.
+[functions.notify-onesignal]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
