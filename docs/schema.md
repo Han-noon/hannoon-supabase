@@ -400,7 +400,7 @@
 | `mark_all_notifications_as_read()` | json | 본인의 모든 미읽음 알림 읽음 처리 |
 | `delete_notification(p_notification_id bigint)` | void | 본인 알림 단일 삭제 |
 | `delete_all_notifications()` | json | 본인 알림 전체 삭제 |
-| `notify_onesignal_on_notification_insert()` | trigger | notifications INSERT 시 `net.http_post()`로 `notify-onesignal` edge function을 비동기 호출. `app.settings.edge_function_url`에서 URL, `app.settings.webhook_secret`으로 인증 |
+| `notify_onesignal_on_notification_insert()` | trigger | notifications INSERT 시 `net.http_post()`로 `notify-onesignal` edge function을 비동기 호출. `private.app_config`에서 `edge_function_url`(URL), `webhook_secret`(인증)을 읽음 |
 
 ---
 
