@@ -481,3 +481,32 @@ DB 트리거(`notify_onesignal_after_notification_insert`)가 호출하는 Deno 
 | `authenticated` | `SELECT`, `INSERT`, `UPDATE` on `viewed_events` |
 | `authenticated` | `EXECUTE` on `get_viewed_events(int, int)` |
 | `service_role` | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `REFERENCES`, `TRIGGER`, `TRUNCATE` on `viewed_events` |
+
+---
+
+## Functions - home widgets
+
+홈 화면 위젯(실시간 이슈 타임라인, 오늘의 핫 토픽 랭킹)용 조회 RPC. `20260913120000_create_home_widget_functions.sql`.
+
+- 기준 시각 `as_of` = `LEAST(now(), MAX(articles.published_at))`. 수집이 멈췄거나 과거 기사로 시연해도 시간창이 비지 않도록 데이터의 최신 시각에 맞추고, 미래 시각 기사가 있어도 `now()`를 넘지 않는다.
+- 이벤트 날짜는 `events.created_at`(파이프라인 적재 시각)이 아니라 소속 기사의 `MIN(published_at)`.
+- 반환 시각(`as_of`, `occurred_at`)은 `timestamp without time zone`을 JSON으로 바꾼 값이라 오프셋이 없다(DB 타임존 Asia/Seoul 기준, 기존 RPC와 동일).
+- 기사 수는 `COUNT(DISTINCT article_id)` — `event_articles`에 (event_id, article_id) UNIQUE가 없어 중복 매핑이 있어도 부풀지 않는다.
+
+| Function | Returns | Description |
+|---|---|---|
+| `get_hot_topics(p_window_hours int, p_size int)` | json | `(as_of - p_window_hours, as_of]` 구간에 발행된 기사 수로 토픽 순위. `{ as_of, window_hours, topics }` 반환, 항목 필드: `rank, topic_id, title, category, article_count`. 정렬: 기사 수 DESC → 최근 기사 시각 DESC → topic_id. 토픽 미배정 이벤트의 기사는 제외. `p_window_hours` default 1 (1 미만 예외, 720 초과 시 클램핑), `p_size` default 5 (1 미만 예외, 100 초과 시 클램핑) |
+| `get_live_topic_timeline(p_topic_id bigint, p_size int, p_active_hours int)` | json | 지정 토픽의 최근 이벤트 `p_size`개를 오래된 순으로 반환. `{ as_of, topic, events }`, `topic`: `{ id, title, category }`, 항목 필드: `id, title, occurred_at, article_count, is_latest, is_active`. `is_latest`는 가장 최근 이벤트, `is_active`는 가장 최근 이벤트에 `as_of - p_active_hours` 이후 기사가 있을 때 true. 기사가 없는 이벤트와 기준 시각 이후(미래 시각) 기사는 제외. 토픽이 없으면 예외 대신 `topic = null, events = []`. `p_size` default 3 (1 미만 예외, 100 초과 시 클램핑), `p_active_hours` default 24 (1 미만 예외, 720 초과 시 클램핑) |
+
+인덱스:
+
+- `articles_published_at_idx` -> 시간창 필터와 `MAX(published_at)` 조회
+- `event_articles_article_id_idx` -> 기사 → 이벤트 조인
+
+---
+
+## Grants - home widgets
+
+| Role | Privileges |
+|---|---|
+| `anon`, `authenticated`, `service_role` | `EXECUTE` on `get_hot_topics(int, int)`, `get_live_topic_timeline(bigint, int, int)` |
