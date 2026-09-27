@@ -481,3 +481,74 @@ DB 트리거(`notify_onesignal_after_notification_insert`)가 호출하는 Deno 
 | `authenticated` | `SELECT`, `INSERT`, `UPDATE` on `viewed_events` |
 | `authenticated` | `EXECUTE` on `get_viewed_events(int, int)` |
 | `service_role` | `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `REFERENCES`, `TRIGGER`, `TRUNCATE` on `viewed_events` |
+
+---
+
+## Functions - home widgets
+
+홈 화면 위젯(실시간 이슈 타임라인, 오늘의 핫 토픽 랭킹)용 조회 RPC. `20260913120000_create_home_widget_functions.sql`.
+
+- 기준 시각 `as_of` = `LEAST(now(), MAX(articles.published_at))`. 수집이 멈췄거나 과거 기사로 시연해도 시간창이 비지 않도록 데이터의 최신 시각에 맞추고, 미래 시각 기사가 있어도 `now()`를 넘지 않는다.
+- 이벤트 날짜는 `events.created_at`(파이프라인 적재 시각)이 아니라 소속 기사의 `MIN(published_at)`.
+- 반환 시각(`as_of`, `occurred_at`)은 `timestamp without time zone`을 JSON으로 바꾼 값이라 오프셋이 없다(DB 타임존 Asia/Seoul 기준, 기존 RPC와 동일).
+- 기사 수는 `COUNT(DISTINCT article_id)` — `event_articles`에 (event_id, article_id) UNIQUE가 없어 중복 매핑이 있어도 부풀지 않는다.
+
+| Function | Returns | Description |
+|---|---|---|
+| `get_hot_topics(p_window_hours int, p_size int)` | json | `(as_of - p_window_hours, as_of]` 구간에 발행된 기사 수로 토픽 순위. `{ as_of, window_hours, topics }` 반환, 항목 필드: `rank, topic_id, title, category, article_count`. 정렬: 기사 수 DESC → 최근 기사 시각 DESC → topic_id. 토픽 미배정 이벤트의 기사는 제외. `p_window_hours` default 1 (1 미만 예외, 720 초과 시 클램핑), `p_size` default 5 (1 미만 예외, 100 초과 시 클램핑) |
+| `get_live_topic_timeline(p_topic_id bigint, p_size int, p_active_hours int)` | json | 지정 토픽의 최근 이벤트 `p_size`개를 오래된 순으로 반환. `{ as_of, topic, events }`, `topic`: `{ id, title, category }`, 항목 필드: `id, title, occurred_at, article_count, is_latest, is_active`. `is_latest`는 가장 최근 이벤트, `is_active`는 가장 최근 이벤트에 `as_of - p_active_hours` 이후 기사가 있을 때 true. 기사가 없는 이벤트와 기준 시각 이후(미래 시각) 기사는 제외. 토픽이 없으면 예외 대신 `topic = null, events = []`. `p_size` default 3 (1 미만 예외, 100 초과 시 클램핑), `p_active_hours` default 24 (1 미만 예외, 720 초과 시 클램핑) |
+
+인덱스:
+
+- `articles_published_at_idx` -> 시간창 필터와 `MAX(published_at)` 조회
+- `event_articles_article_id_idx` -> 기사 → 이벤트 조인
+
+---
+
+## Grants - home widgets
+
+| Role | Privileges |
+|---|---|
+| `anon`, `authenticated`, `service_role` | `EXECUTE` on `get_hot_topics(int, int)`, `get_live_topic_timeline(bigint, int, int)` |
+
+---
+
+## topic_views
+
+홈의 "실시간 인기 타임라인"(최근 1시간 조회수 1위 토픽)을 위한 조회 로그. 이벤트 상세(`/event-detail/:id`)·토픽 페이지(`/timeline/:topic_id`)를 열 때마다 웹이 `record_topic_view`를 호출해 한 줄씩 쌓는다. 비로그인 사용자는 브라우저 난수 `viewer_key`가 있을 때만 기록한다. `20260913130000_create_topic_views.sql`.
+
+`viewed_events`(최근 본 이벤트)는 로그인 사용자만, 사람당 이벤트 1행이라 조회수를 셀 수 없어 따로 둔다.
+
+| Column | Type | Nullable | Default |
+|---|---|---|---|
+| id | bigint (identity) | NOT NULL | - |
+| topic_id | bigint (FK -> topics.id, ON DELETE CASCADE) | NOT NULL | - |
+| event_id | bigint (FK -> events.id, ON DELETE CASCADE) | NULL (토픽 페이지 조회) | - |
+| user_id | uuid (FK -> profiles.id, ON DELETE SET NULL) | NULL (비로그인) | - |
+| viewer_key | text | NULL | - |
+| viewed_at | timestamp | NOT NULL | now() |
+
+- `viewer_key`: 비로그인 사용자 브라우저가 만든 난수. 중복 조회 제한에만 쓰며, 로그인 사용자 행에는 저장하지 않는다.
+- RLS 활성화 + 정책 없음, `anon`/`authenticated` 테이블 권한은 명시적으로 회수. 아래 `SECURITY DEFINER` 함수로만 기록·집계·정리한다(원시 로그 노출 방지).
+- 보관: pg_cron 작업 `purge-topic-views`(매시 17분)가 `purge_topic_views()`로 7일 지난 로그를 삭제하고, 1일 지난 행의 `user_id`·`viewer_key`를 비운다. 식별자는 10분 중복 제한에만 쓴다.
+- 인덱스:
+  - `topic_views_viewed_at_topic_id_idx` (viewed_at, topic_id) -> 인기 집계
+  - `topic_views_topic_id_viewed_at_idx` (topic_id, viewed_at) -> 최근 10분 중복 확인
+  - `topic_views_event_id_idx`, `topic_views_user_id_idx` (부분 인덱스) -> 외래키 CASCADE / SET NULL
+  - `topic_views_identified_viewed_at_idx` (viewed_at, 식별자가 남은 행만) -> 식별자 비우기
+- 알려진 한계: anon 키로 누구나 호출할 수 있고 요청자(IP) 기준 제한이 없어, `viewer_key`를 바꿔 가며 호출하면 조회수를 부풀릴 수 있다. 이벤트의 토픽이 나중에 바뀌어도 과거 조회는 조회 시점 토픽에 남는다.
+
+## Functions - topic_views
+
+| Function | Returns | Description |
+|---|---|---|
+| `record_topic_view(p_topic_id bigint, p_event_id bigint, p_viewer_key text)` | void | 조회 1건 기록. `p_topic_id`(토픽 페이지)와 `p_event_id`(이벤트 상세) 중 정확히 하나를 지정(아니면 예외). 이벤트 조회는 소속 토픽의 조회로 센다. 비로그인인데 `p_viewer_key`가 없거나 빈 문자열이면 기록하지 않음. 토픽 미배정 이벤트·없는 id는 예외 없이 기록하지 않음. 같은 사람(로그인: `user_id`, 비로그인: `viewer_key`)이 같은 화면을 10분 안에 다시 열면 한 번만 기록하며, 동시 호출은 advisory lock으로 직렬화. `p_viewer_key` 64자 초과 시 예외. `SECURITY DEFINER`, `timezone = 'Asia/Seoul'` 고정 |
+| `get_popular_topic_timeline(p_window_hours int, p_size int, p_active_hours int)` | json | `(views_as_of - p_window_hours, views_as_of]` 조회수 1위 토픽의 타임라인. `views_as_of = now()` — 조회는 사용자 행동이라 기사 데이터 최신 시각인 `as_of`와 기준이 다르다. 정렬: 조회수 DESC → 마지막 조회 시각 DESC → topic_id. 반환: `get_live_topic_timeline` 결과(`as_of, topic, events`) + `window_hours, view_count, views_as_of`. 조회가 없으면 기사 수로 대체하지 않고 `topic = null, events = [], view_count = 0`. `p_window_hours` default 1 (1 미만 예외, 24 초과 시 클램핑), `p_size`·`p_active_hours`는 `get_live_topic_timeline`에 그대로 전달. `SECURITY DEFINER` — 안에서 호출하는 `get_live_topic_timeline`도 소유자 권한으로 실행되어 RLS를 적용받지 않으므로, topics/events/articles/event_articles에 제한 정책을 추가하면 함께 검토할 것. `timezone = 'Asia/Seoul'` 고정 |
+| `purge_topic_views()` | json | 7일 지난 로그 삭제 + 1일 지난 행의 `user_id`·`viewer_key` 비우기. `{ deleted, anonymized }` 반환. pg_cron 작업 `purge-topic-views`가 매시 17분 실행. `service_role` 전용 — 함수의 PUBLIC 실행 권한은 Postgres 전역 기본값이라 스키마 단위 기본 권한 회수로 막히지 않아 `PUBLIC`/`anon`/`authenticated`에서 명시적으로 회수, `SECURITY DEFINER`, `timezone = 'Asia/Seoul'` 고정 |
+
+## Grants - topic_views
+
+| Role | Privileges |
+|---|---|
+| `anon`, `authenticated` | 테이블 권한 없음, `EXECUTE` on `record_topic_view(bigint, bigint, text)`, `get_popular_topic_timeline(int, int, int)` |
+| `service_role` | `SELECT`, `INSERT`, `UPDATE`, `DELETE` on `topic_views`, `EXECUTE` on 세 함수 |
