@@ -495,7 +495,7 @@ DB 트리거(`notify_onesignal_after_notification_insert`)가 호출하는 Deno 
 
 | Function | Returns | Description |
 |---|---|---|
-| `get_hot_topics(p_window_hours int, p_size int)` | json | `(as_of - p_window_hours, as_of]` 구간에 발행된 기사 수로 토픽 순위. `{ as_of, window_hours, topics }` 반환, 항목 필드: `rank, topic_id, title, category, article_count`. 정렬: 기사 수 DESC → 최근 기사 시각 DESC → topic_id. 토픽 미배정 이벤트의 기사는 제외. `p_window_hours` default 1 (1 미만 예외, 720 초과 시 클램핑), `p_size` default 5 (1 미만 예외, 100 초과 시 클램핑) |
+| `get_hot_topics(p_window_hours int, p_size int)` | json | 토픽 순위. `{ as_of, window_hours, topics }` 반환, 항목 필드: `rank, topic_id, title, category, article_count, window_article_count`. **순위는 `(as_of - p_window_hours, as_of]` 구간 기사 수(`window_article_count`)로 매기고, `article_count`는 창과 무관한 토픽 누적 기사 수(`published_at <= as_of`)다** — 홈 카드가 누적을 보여주면서 순위는 최근 보도량을 따르기 때문. 정렬: `window_article_count` DESC → 창 안 최근 기사 시각 DESC → topic_id. 창 안에 기사가 없는 토픽과 토픽 미배정 이벤트의 기사는 제외. `p_window_hours` default 1 (1 미만 예외, 720 초과 시 클램핑), `p_size` default 5 (1 미만 예외, 100 초과 시 클램핑) |
 | `get_live_topic_timeline(p_topic_id bigint, p_size int, p_active_hours int)` | json | 지정 토픽의 최근 이벤트 `p_size`개를 오래된 순으로 반환. `{ as_of, topic, events }`, `topic`: `{ id, title, category }`, 항목 필드: `id, title, occurred_at, article_count, is_latest, is_active`. `is_latest`는 가장 최근 이벤트, `is_active`는 가장 최근 이벤트에 `as_of - p_active_hours` 이후 기사가 있을 때 true. 기사가 없는 이벤트와 기준 시각 이후(미래 시각) 기사는 제외. 토픽이 없으면 예외 대신 `topic = null, events = []`. `p_size` default 3 (1 미만 예외, 100 초과 시 클램핑), `p_active_hours` default 24 (1 미만 예외, 720 초과 시 클램핑) |
 
 인덱스:

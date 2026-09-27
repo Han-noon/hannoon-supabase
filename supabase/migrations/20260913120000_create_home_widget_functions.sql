@@ -18,7 +18,11 @@ CREATE INDEX IF NOT EXISTS event_articles_article_id_idx ON public.event_article
 -- -------------------------------------------------------------
 -- get_hot_topics: 기준 시각 직전 p_window_hours 시간 동안
 -- 기사 수가 많은 토픽 순위
---   반환: { as_of, window_hours, topics: [ { rank, topic_id, title, category, article_count } ] }
+--   순위는 시간창 안 기사 수(window_article_count)로 매기고,
+--   화면에 찍는 숫자는 토픽 누적 기사 수(article_count)다. 홈 카드가 "관련 기사 142개"처럼
+--   누적을 보여주면서 순위는 최근 보도량을 따르기 때문에 두 숫자를 나눠서 반환한다.
+--   반환: { as_of, window_hours,
+--           topics: [ { rank, topic_id, title, category, article_count, window_article_count } ] }
 -- -------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_hot_topics(
   p_window_hours int DEFAULT NULL,
@@ -57,24 +61,30 @@ BEGIN
   FROM (
     SELECT
       ROW_NUMBER() OVER (
-        ORDER BY c.article_count DESC, c.last_published_at DESC, c.topic_id
-      )                AS rank,
+        ORDER BY c.window_article_count DESC, c.last_published_at DESC, c.topic_id
+      )                      AS rank,
       c.topic_id,
       t.title,
       t.category,
-      c.article_count
+      c.article_count,
+      c.window_article_count
     FROM (
       SELECT
         e.topic_id,
-        COUNT(DISTINCT a.id)::int AS article_count,
-        MAX(a.published_at)       AS last_published_at
+        COUNT(DISTINCT a.id)::int                       AS article_count,
+        COUNT(DISTINCT a.id) FILTER (WHERE v_in_window)::int AS window_article_count,
+        MAX(a.published_at)  FILTER (WHERE v_in_window)      AS last_published_at
       FROM public.articles a
       JOIN public.event_articles ea ON ea.article_id = a.id
       JOIN public.events e          ON e.id = ea.event_id
+      CROSS JOIN LATERAL (
+        SELECT a.published_at > v_as_of - make_interval(hours => p_window_hours)
+      ) w(v_in_window)
       WHERE e.topic_id IS NOT NULL
-        AND a.published_at >  v_as_of - make_interval(hours => p_window_hours)
         AND a.published_at <= v_as_of
       GROUP BY e.topic_id
+      -- 창 안에 기사가 없는 토픽은 순위에 올리지 않는다
+      HAVING COUNT(DISTINCT a.id) FILTER (WHERE v_in_window) > 0
     ) c
     JOIN public.topics t ON t.id = c.topic_id
     ORDER BY rank
