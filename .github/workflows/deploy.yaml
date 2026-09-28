@@ -21,7 +21,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: 2.95.4
+          version: 2.109.1
 
       - name: Link to dev project
         # GitHub Secrets: DEV_PROJECT_REF, SUPABASE_ACCESS_TOKEN

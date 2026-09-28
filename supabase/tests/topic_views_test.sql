@@ -127,10 +127,10 @@ SELECT throws_ok(
   'anon: 조회 로그 테이블 직접 쓰기 불가'
 );
 
-SELECT throws_ok(
-  $$ SELECT public.purge_topic_views() $$,
-  '42501',
-  NULL,
+-- 호출이 아니라 권한만 검사한다. CI(supabase CLI 2.95.4)에서 이 구문을 anon으로 실행하던 중
+-- 백엔드가 죽어 pgTAP 실행이 통째로 무너졌다(run 36312613563). 검증 내용은 같다.
+SELECT ok(
+  NOT has_function_privilege('anon', 'public.purge_topic_views()', 'EXECUTE'),
   'anon: 로그 정리 함수 실행 불가'
 );
 
