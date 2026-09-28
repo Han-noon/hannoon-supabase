@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(34);
+SELECT plan(36);
 
 -- 전제: db reset 상태(seed 기사는 2024년). as_of와 순위가 articles 테이블 전체를 보므로,
 -- 로컬 DB에 now() - 1h 이후 기사나 최근 49시간 내 기사가 많은 실제 토픽이 있으면 실패할 수 있다.
@@ -77,9 +77,15 @@ SELECT is(
 );
 
 SELECT is(
-  ((public.get_hot_topics())::jsonb -> 'topics' -> 0 ->> 'article_count')::int,
+  ((public.get_hot_topics())::jsonb -> 'topics' -> 0 ->> 'window_article_count')::int,
   1,
   'get_hot_topics: 디폴트 1시간 창에는 기준 시각의 기사만 포함'
+);
+
+SELECT is(
+  ((public.get_hot_topics())::jsonb -> 'topics' -> 0 ->> 'article_count')::int,
+  6,
+  'get_hot_topics: article_count는 창과 무관한 토픽 누적 기사 수'
 );
 
 SELECT is(
@@ -89,7 +95,7 @@ SELECT is(
 );
 
 SELECT ok(
-  (public.get_hot_topics(24))::jsonb -> 'topics' -> 0 ?& ARRAY['rank', 'topic_id', 'title', 'category', 'article_count'],
+  (public.get_hot_topics(24))::jsonb -> 'topics' -> 0 ?& ARRAY['rank', 'topic_id', 'title', 'category', 'article_count', 'window_article_count'],
   'get_hot_topics: 토픽 항목에 필수 필드 포함'
 );
 
@@ -106,7 +112,7 @@ SELECT is(
 );
 
 SELECT is(
-  ((public.get_hot_topics(24))::jsonb -> 'topics' -> 0 ->> 'article_count')::int,
+  ((public.get_hot_topics(24))::jsonb -> 'topics' -> 0 ->> 'window_article_count')::int,
   4,
   'get_hot_topics: 기준 시각과 같은 시각의 기사는 포함, 창 밖 기사는 제외해 집계'
 );
@@ -133,9 +139,15 @@ SELECT is(
 );
 
 SELECT is(
-  ((public.get_hot_topics(48))::jsonb -> 'topics' -> 1 ->> 'article_count')::int,
+  ((public.get_hot_topics(48))::jsonb -> 'topics' -> 1 ->> 'window_article_count')::int,
   4,
   'get_hot_topics: 창 시작 시각과 같은 시각의 기사는 제외'
+);
+
+SELECT is(
+  ((public.get_hot_topics(48))::jsonb -> 'topics' -> 1 ->> 'article_count')::int,
+  6,
+  'get_hot_topics: 같은 토픽의 누적 기사 수에는 창 밖 기사도 들어간다 (순위는 창 안 기준)'
 );
 
 SELECT is(
