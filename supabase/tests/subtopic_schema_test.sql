@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(69);
+SELECT plan(76);
 
 -- ============================================================
 -- 1. events.subtopic_processed_at
@@ -131,6 +131,20 @@ SELECT col_is_pk('public', 'subtopics', 'id', 'subtopics.id는 Primary Key여야
 SELECT col_not_null('public', 'subtopics', 'topic_id', 'subtopics.topic_id는 NOT NULL이어야 한다');
 SELECT col_not_null('public', 'subtopics', 'name',     'subtopics.name은 NOT NULL이어야 한다');
 SELECT col_not_null('public', 'subtopics', 'type',     'subtopics.type은 NOT NULL이어야 한다');
+
+SELECT ok(
+  EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'subtopics_type_check'
+      AND conrelid = 'public.subtopics'::regclass
+      AND contype = 'c'
+      AND pg_get_constraintdef(oid) LIKE '%FOCAL_POINT%'
+      AND pg_get_constraintdef(oid) LIKE '%PROCESS%'
+      AND pg_get_constraintdef(oid) LIKE '%RECURRING_ISSUE%'
+  ),
+  'subtopics.type은 허용된 3개 유형만 저장할 수 있어야 한다'
+);
 
 SELECT has_index(
   'public', 'subtopics', 'subtopics_topic_id_idx',
@@ -263,6 +277,89 @@ SELECT ok(
       AND cmd = 'SELECT'
   ),
   'subtopic_events에 anon/authenticated SELECT 정책이 존재해야 한다'
+);
+
+SELECT has_trigger(
+  'public', 'subtopic_events', 'enforce_subtopic_event_same_topic',
+  'subtopic_events에 동일 Topic 연결 검증 트리거가 존재해야 한다'
+);
+
+-- 동일 Topic / 다른 Topic 연결 동작 검증용 fixture
+INSERT INTO public.topics (category, title, summary)
+VALUES
+  ((enum_range(NULL::public.category))[1], '__pgtap_subtopic_topic_a__', 'test'),
+  ((enum_range(NULL::public.category))[1], '__pgtap_subtopic_topic_b__', 'test');
+
+-- 허용되지 않은 Subtopic type은 저장할 수 없어야 한다.
+SELECT throws_ok(
+  format(
+    'INSERT INTO public.subtopics (topic_id, name, type)
+     VALUES (%s, %L, %L)',
+    (SELECT id FROM public.topics WHERE title = '__pgtap_subtopic_topic_a__'),
+    '__pgtap_invalid_type__',
+    'FOCAL-POINT'
+  ),
+  '23514',
+  NULL,
+  '허용되지 않은 Subtopic type은 저장할 수 없어야 한다'
+);
+
+INSERT INTO public.events (topic_id, category, title, summary)
+SELECT id, category, '__pgtap_subtopic_event_a__', 'test'
+FROM public.topics
+WHERE title = '__pgtap_subtopic_topic_a__';
+
+INSERT INTO public.events (topic_id, category, title, summary)
+SELECT id, category, '__pgtap_subtopic_event_b__', 'test'
+FROM public.topics
+WHERE title = '__pgtap_subtopic_topic_b__';
+
+INSERT INTO public.subtopics (topic_id, name, type)
+SELECT id, '__pgtap_subtopic_a__', 'FOCAL_POINT'
+FROM public.topics
+WHERE title = '__pgtap_subtopic_topic_a__';
+
+SELECT lives_ok(
+  format(
+    'INSERT INTO public.subtopic_events (subtopic_id, event_id) VALUES (%s, %s)',
+    (SELECT id FROM public.subtopics WHERE name = '__pgtap_subtopic_a__'),
+    (SELECT id FROM public.events WHERE title = '__pgtap_subtopic_event_a__')
+  ),
+  '같은 Topic의 Subtopic과 Event는 연결할 수 있어야 한다'
+);
+
+SELECT throws_ok(
+  format(
+    'INSERT INTO public.subtopic_events (subtopic_id, event_id) VALUES (%s, %s)',
+    (SELECT id FROM public.subtopics WHERE name = '__pgtap_subtopic_a__'),
+    (SELECT id FROM public.events WHERE title = '__pgtap_subtopic_event_b__')
+  ),
+  '23514',
+  'subtopic_events topic mismatch: subtopic and event must belong to the same topic',
+  '다른 Topic의 Event를 Subtopic에 연결할 수 없어야 한다'
+);
+
+SELECT throws_ok(
+  format(
+    'UPDATE public.subtopic_events SET event_id = %s WHERE subtopic_id = %s AND event_id = %s',
+    (SELECT id FROM public.events WHERE title = '__pgtap_subtopic_event_b__'),
+    (SELECT id FROM public.subtopics WHERE name = '__pgtap_subtopic_a__'),
+    (SELECT id FROM public.events WHERE title = '__pgtap_subtopic_event_a__')
+  ),
+  '23514',
+  'subtopic_events topic mismatch: subtopic and event must belong to the same topic',
+  '기존 연결을 다른 Topic의 Event로 변경할 수 없어야 한다'
+);
+
+SELECT ok(
+  NOT EXISTS (
+    SELECT 1
+    FROM public.subtopic_events se
+    JOIN public.subtopics s ON s.id = se.subtopic_id
+    JOIN public.events e ON e.id = se.event_id
+    WHERE s.topic_id IS DISTINCT FROM e.topic_id
+  ),
+  'subtopic_events에는 서로 다른 Topic 간 연결이 존재하지 않아야 한다'
 );
 
 

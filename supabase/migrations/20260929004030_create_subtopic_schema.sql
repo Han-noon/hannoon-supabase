@@ -82,6 +82,7 @@ CREATE TABLE public.subtopics (
   membership_criterion text,
   summary text,
   type text NOT NULL,
+  CONSTRAINT subtopics_type_check CHECK (type IN ('FOCAL_POINT', 'PROCESS', 'RECURRING_ISSUE')),
   created_at timestamp without time zone NOT NULL DEFAULT now(),
   updated_at timestamp without time zone NOT NULL DEFAULT now()
 );
@@ -180,6 +181,45 @@ ALTER TABLE public.subtopic_events
 
 ALTER TABLE public.subtopic_events
   VALIDATE CONSTRAINT subtopic_events_event_id_fkey;
+
+-- Subtopic과 Event는 반드시 동일한 Topic에 속해야 한다.
+-- FK는 각 행의 존재 여부만 보장하므로, 교차 Topic 연결은 별도 트리거로 방지한다.
+CREATE OR REPLACE FUNCTION public.validate_subtopic_event_same_topic()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  v_subtopic_topic_id bigint;
+  v_event_topic_id bigint;
+BEGIN
+  SELECT s.topic_id, e.topic_id
+  INTO v_subtopic_topic_id, v_event_topic_id
+  FROM public.subtopics AS s
+  CROSS JOIN public.events AS e
+  WHERE s.id = NEW.subtopic_id
+    AND e.id = NEW.event_id;
+
+  -- 존재하지 않는 FK 값은 기존 FK 제약이 처리하도록 둔다.
+  IF NOT FOUND THEN
+    RETURN NEW;
+  END IF;
+
+  IF v_subtopic_topic_id IS DISTINCT FROM v_event_topic_id THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '23514',
+      MESSAGE = 'subtopic_events topic mismatch: subtopic and event must belong to the same topic';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER enforce_subtopic_event_same_topic
+BEFORE INSERT OR UPDATE OF subtopic_id, event_id
+ON public.subtopic_events
+FOR EACH ROW
+EXECUTE FUNCTION public.validate_subtopic_event_same_topic();
 
 GRANT SELECT ON TABLE public.subtopic_events TO anon;
 GRANT SELECT ON TABLE public.subtopic_events TO authenticated;
