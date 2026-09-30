@@ -214,8 +214,8 @@
 | `get_articles_by_event(p_event_id, p_bias_type, p_page, p_size, p_order)` | json | 이벤트별 기사 page 기반 페이지네이션. `{ articles, page, size, total_count, total_pages }` 반환. `articles` 항목 필드: `link, title, summary, article_image_url, publisher, published_at, bias_type`. `p_bias_type`: NULL(전체)/진보/중도/보수, `p_page` default 1 (1 미만 예외), `p_size` default 3 (1 미만 예외, 100 초과 시 클램핑), `p_order`: asc(기본)/desc |
 | `get_abusing_articles_by_event(p_event_id, p_abusing_type, p_page, p_size)` | json | 이벤트별 어뷰징 기사 page 기반 페이지네이션. `{ articles, page, size, total_count, total_pages }` 반환. `articles` 항목 필드: `link, title, summary, article_image_url, publisher, published_at`. `p_abusing_type`: NULL(전체)/title_content_mismatch/content_context_mismatch, `p_page` default 1 (1 미만 예외), `p_size` default 4 (1 미만 예외, 100 초과 시 클램핑). 정렬: id DESC(최근순) |
 | `get_articles_by_event(p_event_id, p_bias_type, p_page, p_size, p_order)` | json | 이벤트별 기사 page 기반 페이지네이션. `{ articles, page, size, total_count, total_pages }` 반환. `p_bias_type`: NULL(전체)/left/mid/right, `p_page` default 1 (1 미만 예외), `p_size` default 3 (1 미만 예외, 100 초과 시 클램핑), `p_order`: asc(기본)/desc |
-| `get_topics(p_search, p_category, p_page, p_size)` | json | topics 목록 조회. `{ topics, page, size, total_count, total_pages }` 반환, 각 topic에 `subscription_id`, `is_subscribed` 포함 |
-| `get_subscribed_topics(p_page, p_size)` | json | 현재 사용자가 구독한 topics 목록 조회. `{ topics, page, size, total_count, total_pages }` 반환 |
+| `get_topics(p_search, p_category, p_page, p_size, p_order)` | json | topics 목록 조회. `{ topics, page, size, total_count, total_pages }` 반환, 각 topic에 `subscription_id`, `is_subscribed`와 카드 집계(`article_count`, `left_count`, `mid_count`, `right_count`, `first_published_at`) 포함. `p_order`: `latest`(기본, created_at DESC → id DESC) / `articles`(article_count DESC → created_at DESC → id DESC), 그 외 값은 예외. 집계는 `get_hot_topics`와 같은 기준 — `event_articles`(정상 기사)만 세고 미래 시각 기사 제외, 그래서 진보+중도+보수 = `article_count`. 이벤트 상세(`get_event`)의 기사 수는 어뷰징을 더한 캐시 컬럼이라 기준이 다름. `first_published_at`은 KST `timestamp`(시간대 없음). 비율(%)은 화면에서 계산. 페이지를 먼저 자르고 그 토픽만 집계하며, 전체 집계는 `articles` 정렬일 때만 (`20260930120000`) |
+| `get_subscribed_topics(p_page, p_size)` | json | 현재 사용자가 구독한 topics 목록 조회. `{ topics, page, size, total_count, total_pages }` 반환. 각 topic에 `get_topics`와 같은 카드 집계 필드 포함, 정렬은 id DESC |
 | `get_events(p_search, p_category, p_page, p_size)` | json | events 목록 조회. `{ events, page, size, total_count, total_pages }` 반환, 각 event에 `subscription_id`, `is_subscribed` 포함 |
 | `subscribe_topic(p_topic_id bigint)` | json | 토픽 구독 후 `{ subscription_id, is_subscribed }` 반환. 이미 구독 중이어도 기존 구독 정보 반환 |
 | `unsubscribe_topic(p_topic_id bigint)` | void | 토픽 구독 해제. 미구독이어도 성공 처리 |
@@ -226,9 +226,9 @@
 
 | 대상 | 권한 |
 |------|------|
-| `anon` | `EXECUTE` on `get_topics(text, category, int, int)` |
+| `anon` | `EXECUTE` on `get_topics(text, category, int, int, text)` |
 | `anon` | `EXECUTE` on `get_events(text, category, int, int)` |
-| `authenticated` | `EXECUTE` on `get_topics(text, category, int, int)` |
+| `authenticated` | `EXECUTE` on `get_topics(text, category, int, int, text)` |
 | `authenticated` | `EXECUTE` on `get_subscribed_topics(int, int)` |
 | `authenticated` | `EXECUTE` on `get_events(text, category, int, int)` |
 | `service_role` | `EXECUTE` on list query functions |
