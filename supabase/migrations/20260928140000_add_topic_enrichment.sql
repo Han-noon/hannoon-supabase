@@ -2,6 +2,7 @@
 begin;
 alter table public.topics add column if not exists keywords text[] not null default '{}';
 alter table public.topics add column if not exists ai_generated_at timestamptz;
+alter table public.topics add column if not exists ai_summary text;
 create table if not exists public.topic_enrichment_state (
  scope_key text primary key, source_hash text not null, version bigint not null,
  model_version text not null, generated_at timestamptz not null default now()
@@ -87,7 +88,7 @@ begin
    end loop;
  end loop;
  for r in select * from jsonb_array_elements(p_topics) loop
-   update public.topics set summary=r->>'summary', keywords=array(select jsonb_array_elements_text(r->'keywords')),
+   update public.topics set ai_summary=r->>'summary', keywords=array(select jsonb_array_elements_text(r->'keywords')),
      ai_generated_at=now() where id=(r->>'id')::bigint;
  end loop;
  -- Only this configured topic scope is replaced. Both directions share one row.
@@ -110,9 +111,9 @@ grant execute on function public.publish_topic_enrichment(bigint[],text,bigint,t
 
 create or replace function public.get_topic_enrichment(p_topic_id bigint)
 returns jsonb language sql stable security invoker set search_path = '' as $$
- select jsonb_build_object('topic_id',t.id::text,'keywords',t.keywords,'summary',t.summary,'generated_at',t.ai_generated_at,
-   'related_topics',coalesce((select jsonb_agg(jsonb_build_object('id',other.id::text,'title',other.title,
-     'summary',other.summary,'category',other.category,'reason',r.reason) order by other.id)
+ select jsonb_build_object('topic_id',t.id,'keywords',t.keywords,'summary',t.ai_summary,'generated_at',t.ai_generated_at,
+   'related_topics',coalesce((select jsonb_agg(jsonb_build_object('id',other.id,'title',other.title,
+     'summary',other.ai_summary,'category',other.category,'reason',r.reason) order by other.id)
      from public.topic_relations r join public.topics other on other.id=case when r.topic_id=t.id then r.related_topic_id else r.topic_id end
      where r.topic_id=t.id or r.related_topic_id=t.id),'[]'::jsonb))
  from public.topics t where t.id=p_topic_id;

@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(20);
+SELECT plan(28);
 
 -- 테스트가 만든 행만 사용하고 마지막에 롤백한다.
 CREATE TEMP TABLE enrichment_fixture (topic_ids bigint[], initial_snapshot jsonb, outputs jsonb, relations jsonb);
@@ -13,7 +13,7 @@ SELECT topic_ids[1],'경제'::public.category,'_enrichment_event_a','첫 번째 
 UNION ALL SELECT topic_ids[2],'사회'::public.category,'_enrichment_event_b','두 번째 근거' FROM enrichment_fixture;
 UPDATE enrichment_fixture f SET
  initial_snapshot=public.topic_enrichment_snapshot(topic_ids),
- outputs=(SELECT jsonb_agg(jsonb_build_object('id',id::text,'summary','생성된 요약','keywords',jsonb_build_array('쟁점'))) FROM unnest(topic_ids) id),
+ outputs=(SELECT jsonb_agg(jsonb_build_object('id',id::text,'summary','생성된 요약','keywords',jsonb_build_array('쟁점')) ORDER BY id) FROM unnest(topic_ids) id),
  relations=jsonb_build_array(jsonb_build_object('topic_id',topic_ids[1]::text,'related_topic_id',topic_ids[2]::text,
    'reason','공통 쟁점에 대한 비교','source_event_ids',(SELECT jsonb_agg(id::text) FROM public.events WHERE topic_id=f.topic_ids[1]),
    'target_event_ids',(SELECT jsonb_agg(id::text) FROM public.events WHERE topic_id=f.topic_ids[2])));
@@ -32,7 +32,13 @@ SELECT is((public.publish_topic_enrichment(topic_ids,initial_snapshot->>'source_
 RESET ROLE;
 SELECT is((public.get_topic_enrichment(topic_ids[1])->>'summary'),'생성된 요약','summary saved') FROM enrichment_fixture;
 SELECT is(public.get_topic_enrichment(topic_ids[1])->'keywords','["쟁점"]'::jsonb,'keywords saved') FROM enrichment_fixture;
-SELECT is(public.get_topic_enrichment(topic_ids[2])->'related_topics'->0->>'id',topic_ids[1]::text,'relation readable in reverse direction') FROM enrichment_fixture;
+SELECT is(public.get_topic_enrichment(topic_ids[2])->'related_topics'->0->'id',to_jsonb(topic_ids[1]),'relation readable in reverse direction with numeric ID') FROM enrichment_fixture;
+SELECT is(public.get_topic_enrichment(topic_ids[1])->'topic_id',to_jsonb(topic_ids[1]),'public topic ID is a JSON number') FROM enrichment_fixture;
+SELECT is((SELECT ai_summary FROM public.topics WHERE id=topic_ids[1]),'생성된 요약','card summary stored separately') FROM enrichment_fixture;
+SELECT is((SELECT summary FROM public.topics WHERE id=topic_ids[1]),'기존 요약','publish preserves pipeline summary') FROM enrichment_fixture;
+UPDATE public.topics SET summary='분류기가 갱신한 요약' WHERE id=ANY((SELECT topic_ids FROM enrichment_fixture)::bigint[]);
+SELECT is(public.get_topic_enrichment(topic_ids[1])->>'summary','생성된 요약','pipeline update preserves card summary') FROM enrichment_fixture;
+SELECT is(public.get_topic_enrichment(topic_ids[2])->'related_topics'->0->>'summary','생성된 요약','related card reads AI summary') FROM enrichment_fixture;
 SELECT is(public.topic_enrichment_snapshot(topic_ids)->>'source_hash',initial_snapshot->>'source_hash','generated output does not change input hash') FROM enrichment_fixture;
 SELECT throws_ok(format('SELECT public.publish_topic_enrichment(%L::bigint[],%L,0,%L,%L::jsonb,%L::jsonb)',topic_ids,initial_snapshot->>'source_hash','test-model',outputs,relations),
  'P0001','STALE_SNAPSHOT: inputs or publication changed; regenerate','stale publication rejected') FROM enrichment_fixture;
@@ -46,6 +52,9 @@ UPDATE enrichment_fixture SET initial_snapshot=public.topic_enrichment_snapshot(
 SELECT is((public.publish_topic_enrichment(topic_ids,initial_snapshot->>'source_hash',1,'test-model',outputs,'[]'::jsonb)->>'saved')::boolean,true,'empty topic can be cleared') FROM enrichment_fixture;
 SELECT is(public.get_topic_enrichment(topic_ids[2])->>'summary','','empty summary cleared') FROM enrichment_fixture;
 SELECT is(public.get_topic_enrichment(topic_ids[2])->'related_topics','[]'::jsonb,'old relations removed') FROM enrichment_fixture;
+SELECT is((SELECT summary FROM public.topics WHERE id=topic_ids[2]),'분류기가 갱신한 요약','clearing card preserves pipeline summary') FROM enrichment_fixture;
+SELECT is(public.get_topic_enrichment(topic_ids[1])->>'summary','생성된 요약','republish reads AI output rather than pipeline text') FROM enrichment_fixture;
+SELECT is(jsonb_typeof(public.topic_enrichment_snapshot(topic_ids)->'topics'->0->'id'),'string','internal snapshot retains string IDs') FROM enrichment_fixture;
 SET LOCAL ROLE anon;
 SELECT lives_ok($$SELECT public.get_topic_enrichment(id) FROM public.topics WHERE title='_enrichment_a'$$,'anon can read public card');
 RESET ROLE;
