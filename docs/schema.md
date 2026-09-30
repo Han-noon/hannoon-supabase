@@ -146,6 +146,9 @@
 | next_event_id | bigint (FK → events.id) | NULL | — |
 | embedding | vector(4096) | NULL | — |
 | reason | text | NULL | — |
+| short_summary | text | NULL | — |
+
+- `short_summary`: 이벤트의 짧은 명사형 요약(예: "의대 정원 2,000명 확대 공식화"). 토픽 분류 진입 시 요약 롤업과 같은 호출에서 채우며, 롤업 전 이벤트는 NULL.
 
 ### subscriptions
 
@@ -190,6 +193,22 @@
 | topic_id | bigint (FK → topics.id) | NOT NULL | — |
 | cause_text | text | NOT NULL | — |
 | cause_embedding | vector(4096) | NULL | — |
+
+### article_entities
+
+기사별 고유명사(LLM 추출). 새 기사와 엔티티가 겹치는 기사를 이벤트 후보로 회수하는 역색인.
+
+| Column | Type | Nullable | Default |
+|---|---|---|---|
+| article_id | bigint (FK → articles.id) | NOT NULL | — |
+| entity | text | NOT NULL | — |
+
+제약·인덱스:
+
+- `article_entities_pkey` — PRIMARY KEY (article_id, entity). 재추출 시 중복 행 방지, `article_id` 조회 인덱스 겸용
+- `article_entities_entity_idx` — (entity), 엔티티로 기사 찾기
+
+권한: RLS 활성화, `anon`·`authenticated` 권한 없음, `service_role`만 `SELECT`, `INSERT`, `UPDATE`, `DELETE`.
 
 ---
 
