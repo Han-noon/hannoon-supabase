@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(26);
+SELECT plan(32);
 
 -- 픽스처 토픽 제목에 고유 토큰(zzcardstatszz)을 넣고 p_search로 걸러서, 시드나 로컬 데이터가
 -- 있어도 픽스처끼리의 순서만 본다.
@@ -11,6 +11,10 @@ SELECT plan(26);
 --   d: 보수 6건 (a와 기사 수 동률), created_at만 하루 이전
 -- 같은 트랜잭션이라 a·b·c의 created_at은 같고 id는 a < b < c < d 순이다. d만 하루 당겨서
 -- "기사 수 동률이면 created_at DESC"와 "created_at도 같으면 id DESC"를 함께 본다.
+-- 이미지: b는 있고, c는 이벤트가 없고, d는 이미지가 없다. a는 폴백·제외 규칙을 본다:
+--   a1 가장 최근인데 이미지가 ''(시연 코퍼스 수집 도구가 넣는 값) / a2 이미지 있음(더 오래됨)
+--   a3 이미지 있지만 미래 시각 기사만 / a4 이미지 있지만 기사 없음 / a5 a1과 날짜 같고 id가 큼(처음엔 NULL)
+-- a3~a5는 기존 기사만 다시 걸어서 a의 기사 수(6)는 그대로다.
 INSERT INTO public.topics (category, title, summary) VALUES
   ('사회', '_zzcardstatszz_a', '요약'),
   ('경제', '_zzcardstatszz_b', '요약'),
@@ -19,11 +23,14 @@ INSERT INTO public.topics (category, title, summary) VALUES
 
 UPDATE public.topics SET created_at = now()::timestamp - interval '1 day' WHERE title = '_zzcardstatszz_d';
 
-INSERT INTO public.events (topic_id, category, title, summary) VALUES
-  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_a'), '사회', '_zzcardstatszz_ev_a1', '요약'),
-  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_a'), '사회', '_zzcardstatszz_ev_a2', '요약'),
-  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_b'), '경제', '_zzcardstatszz_ev_b1', '요약'),
-  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_d'), '정치', '_zzcardstatszz_ev_d1', '요약');
+INSERT INTO public.events (topic_id, category, title, summary, event_image_url) VALUES
+  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_a'), '사회', '_zzcardstatszz_ev_a1', '요약', ''),
+  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_a'), '사회', '_zzcardstatszz_ev_a2', '요약', 'https://img.test/a2.jpg'),
+  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_b'), '경제', '_zzcardstatszz_ev_b1', '요약', 'https://img.test/b1.jpg'),
+  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_d'), '정치', '_zzcardstatszz_ev_d1', '요약', NULL),
+  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_a'), '사회', '_zzcardstatszz_ev_a3', '요약', 'https://img.test/a3.jpg'),
+  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_a'), '사회', '_zzcardstatszz_ev_a4', '요약', 'https://img.test/a4.jpg'),
+  ((SELECT id FROM public.topics WHERE title = '_zzcardstatszz_a'), '사회', '_zzcardstatszz_ev_a5', '요약', NULL);
 
 -- (소속 이벤트, 성향, 건수, published_at). summary에 이벤트 제목을 적어 아래 연결에 쓴다.
 INSERT INTO public.articles (feed_url, guid, link, category, title, summary, content_source, publisher, published_at, bias_type, status)
@@ -61,6 +68,13 @@ INSERT INTO public.event_articles (event_id, article_id) VALUES (
   (SELECT id FROM public.events WHERE title = '_zzcardstatszz_ev_a1'),
   (SELECT id FROM public.articles WHERE guid = 'card-future')
 );
+
+-- 이미지 규칙용: a3에는 미래 기사만, a5에는 a1과 같은 시각의 기존 기사만 건다
+INSERT INTO public.event_articles (event_id, article_id) VALUES
+  ((SELECT id FROM public.events WHERE title = '_zzcardstatszz_ev_a3'),
+   (SELECT id FROM public.articles WHERE guid = 'card-future')),
+  ((SELECT id FROM public.events WHERE title = '_zzcardstatszz_ev_a5'),
+   (SELECT id FROM public.articles WHERE guid = 'card-_zzcardstatszz_ev_a1-중도-1'));
 
 -- 어뷰징 기사: 파이프라인처럼 abusing_articles에만 넣는다. 트리거가 events.article_count(캐시)를
 -- 올리지만 카드 집계에는 들어가면 안 된다.
@@ -101,7 +115,7 @@ SELECT lives_ok(
 
 SELECT ok(
   (SELECT item FROM card WHERE title = '_zzcardstatszz_a')
-    ?& ARRAY['article_count', 'left_count', 'mid_count', 'right_count', 'first_published_at'],
+    ?& ARRAY['article_count', 'left_count', 'mid_count', 'right_count', 'first_published_at', 'topic_image_url'],
   'get_topics: 카드 집계 필드 포함'
 );
 
@@ -145,6 +159,41 @@ SELECT is(
    WHERE x->>'title' = '_zzcardstatszz_a'),
   (SELECT (item->>'article_count')::int FROM card WHERE title = '_zzcardstatszz_a'),
   'get_topics: 핫 토픽 랭킹과 같은 기사 수'
+);
+
+
+-- ── 카드 이미지 ─────────────────────────────────────────────────
+
+SELECT is(
+  (SELECT item->>'topic_image_url' FROM card WHERE title = '_zzcardstatszz_a'),
+  'https://img.test/a2.jpg',
+  'get_topics: 최신 이벤트 이미지가 빈 문자열이면 그다음 최근 것. 미래 기사만·기사 없는 이벤트는 제외'
+);
+
+SELECT results_eq(
+  $$ SELECT title, item->'topic_image_url' FROM card WHERE title IN ('_zzcardstatszz_c', '_zzcardstatszz_d') ORDER BY title $$,
+  $$ VALUES ('_zzcardstatszz_c', 'null'::jsonb), ('_zzcardstatszz_d', 'null'::jsonb) $$,
+  'get_topics: 이미지 있는 이벤트가 없으면 topic_image_url = null'
+);
+
+UPDATE public.events SET event_image_url = 'https://img.test/a1.jpg' WHERE title = '_zzcardstatszz_ev_a1';
+
+SELECT is(
+  (SELECT x->>'topic_image_url'
+   FROM jsonb_array_elements((public.get_topics('zzcardstatszz', NULL, 1, 100))::jsonb -> 'topics') x
+   WHERE x->>'title' = '_zzcardstatszz_a'),
+  'https://img.test/a1.jpg',
+  'get_topics: 이미지가 여러 개면 가장 최근 이벤트의 것'
+);
+
+UPDATE public.events SET event_image_url = 'https://img.test/a5.jpg' WHERE title = '_zzcardstatszz_ev_a5';
+
+SELECT is(
+  (SELECT x->>'topic_image_url'
+   FROM jsonb_array_elements((public.get_topics('zzcardstatszz', NULL, 1, 100))::jsonb -> 'topics') x
+   WHERE x->>'title' = '_zzcardstatszz_a'),
+  'https://img.test/a5.jpg',
+  'get_topics: 날짜가 같으면 id가 큰 이벤트의 이미지'
 );
 
 
@@ -254,6 +303,14 @@ SELECT is(
   'authenticated: subscription_id는 실제 구독 id'
 );
 
+SELECT is(
+  (SELECT x->>'topic_image_url'
+   FROM jsonb_array_elements((public.get_topics('zzcardstatszz', NULL, 1, 100))::jsonb -> 'topics') x
+   WHERE x->>'title' = '_zzcardstatszz_a'),
+  'https://img.test/a5.jpg',
+  'authenticated: get_topics 로그인 분기도 같은 대표 이미지'
+);
+
 SELECT results_eq(
   $$ SELECT x->'subscription_id', (x->>'is_subscribed')::boolean
      FROM jsonb_array_elements((public.get_topics('zzcardstatszz', NULL, 1, 100))::jsonb -> 'topics') x
@@ -270,7 +327,7 @@ SELECT is(
 
 SELECT ok(
   (public.get_subscribed_topics(1, 9))::jsonb -> 'topics' -> 0
-    ?& ARRAY['article_count', 'left_count', 'mid_count', 'right_count', 'first_published_at'],
+    ?& ARRAY['article_count', 'left_count', 'mid_count', 'right_count', 'first_published_at', 'topic_image_url'],
   'get_subscribed_topics: 카드 집계 필드 포함'
 );
 
@@ -281,6 +338,14 @@ SELECT results_eq(
      WHERE x->>'title' = '_zzcardstatszz_a' $$,
   $$ VALUES (6, 3, 2, 1, now()::timestamp - interval '5 days') $$,
   'get_subscribed_topics: get_topics와 같은 집계'
+);
+
+SELECT is(
+  (SELECT x->>'topic_image_url'
+   FROM jsonb_array_elements((public.get_subscribed_topics(1, 9))::jsonb -> 'topics') x
+   WHERE x->>'title' = '_zzcardstatszz_a'),
+  'https://img.test/a5.jpg',
+  'get_subscribed_topics: get_topics와 같은 대표 이미지'
 );
 
 SELECT is(

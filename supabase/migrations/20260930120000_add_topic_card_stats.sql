@@ -4,7 +4,11 @@
 --   get_subscribed_topics: 집계 필드 추가 (마이페이지도 같은 ThemeCard를 쓴다)
 -- =============================================================
 -- 카드에 "관련 기사 N개 · 진보/중도/보수 비율 · 최초 보도일"을 그리기 위한 필드:
---   article_count, left_count, mid_count, right_count, first_published_at(KST, 시간대 없음)
+--   article_count, left_count, mid_count, right_count, first_published_at(KST, 시간대 없음), topic_image_url
+--
+-- topic_image_url은 토픽의 대표 이미지다. topics에는 이미지가 없어서, 이미지가 있는 이벤트 중 가장 최근
+-- 이벤트의 event_image_url을 쓴다(날짜는 get_live_topic_timeline과 같은 기사 MIN(published_at)). 없으면 null.
+-- 시연 코퍼스 수집 도구는 이미지가 없으면 ''를 넣으므로 NULL과 함께 거른다.
 --
 -- 집계는 get_hot_topics와 같은 기준이다. event_articles(정상 기사)만 세고 미래 시각 기사는 뺀다.
 -- 어뷰징 기사는 abusing_articles에만 들어가므로 자연히 빠진다. bias_type이 NOT NULL이고 값이
@@ -96,7 +100,8 @@ BEGIN
       st.left_count,
       st.mid_count,
       st.right_count,
-      st.first_published_at
+      st.first_published_at,
+      img.topic_image_url
     FROM (
       SELECT t.*, COALESCE(c.article_count, 0) AS sort_count
       FROM public.topics t
@@ -135,6 +140,19 @@ BEGIN
       WHERE e.topic_id = p.id
         AND a.published_at <= now()::timestamp
     ) st
+    -- 카드 이미지: 이미지가 있는 이벤트 중 가장 최근 것 (위 헤더 참고)
+    LEFT JOIN LATERAL (
+      SELECT e.event_image_url AS topic_image_url
+      FROM public.events e
+      JOIN public.event_articles ea ON ea.event_id = e.id
+      JOIN public.articles a        ON a.id = ea.article_id
+      WHERE e.topic_id = p.id
+        AND e.event_image_url <> ''
+        AND a.published_at <= now()::timestamp
+      GROUP BY e.id
+      ORDER BY MIN(a.published_at) DESC, e.id DESC
+      LIMIT 1
+    ) img ON true
     ORDER BY p.sort_count DESC, p.created_at DESC, p.id DESC
   ) r;
 
@@ -210,7 +228,8 @@ BEGIN
       st.left_count,
       st.mid_count,
       st.right_count,
-      st.first_published_at
+      st.first_published_at,
+      img.topic_image_url
     FROM (
       SELECT t.*, s.id AS subscription_id
       FROM public.topics t
@@ -232,6 +251,19 @@ BEGIN
       WHERE e.topic_id = p.id
         AND a.published_at <= now()::timestamp
     ) st
+    -- 카드 이미지: 이미지가 있는 이벤트 중 가장 최근 것 (위 헤더 참고)
+    LEFT JOIN LATERAL (
+      SELECT e.event_image_url AS topic_image_url
+      FROM public.events e
+      JOIN public.event_articles ea ON ea.event_id = e.id
+      JOIN public.articles a        ON a.id = ea.article_id
+      WHERE e.topic_id = p.id
+        AND e.event_image_url <> ''
+        AND a.published_at <= now()::timestamp
+      GROUP BY e.id
+      ORDER BY MIN(a.published_at) DESC, e.id DESC
+      LIMIT 1
+    ) img ON true
     ORDER BY p.id DESC
   ) r;
 
