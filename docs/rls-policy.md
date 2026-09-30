@@ -226,3 +226,14 @@
 - `anon`은 테이블 권한 자체가 없으므로 RLS 평가 전에 차단된다. `get_event`를 `anon`이 호출해도 `auth.uid()`가 NULL이라 기록하지 않는다.
 - 최근 본 이벤트 목록 조회는 `get_viewed_events()` RPC(`authenticated` 전용, 최근 일주일 범위)를 사용한다.
 - DELETE는 클라이언트가 직접 수행하지 않는다(필요 시 `service_role`).
+
+## 토픽 AI 생성 결과
+
+| 대상 | anon / authenticated | service_role |
+|---|---|---|
+| `topic_relations` | SELECT만 허용 (RLS) | SELECT/INSERT/UPDATE/DELETE |
+| `topic_enrichment_state` | 접근 불가 | SELECT/INSERT/UPDATE/DELETE |
+| `get_topic_enrichment` | 실행 가능, 기존 topics RLS 적용 | 실행 가능 |
+| `topic_enrichment_snapshot`, `publish_topic_enrichment` | 실행 불가 | 실행 가능 |
+
+세 함수 모두 SECURITY INVOKER이며 search_path를 고정한다. 저장 RPC는 선택한 토픽 범위와 실제 이벤트 소속을 검증한다. 서버 키는 생성 작업에서만 사용한다.

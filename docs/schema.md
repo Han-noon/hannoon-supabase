@@ -552,3 +552,16 @@ DB 트리거(`notify_onesignal_after_notification_insert`)가 호출하는 Deno 
 |---|---|
 | `anon`, `authenticated` | 테이블 권한 없음, `EXECUTE` on `record_topic_view(bigint, bigint, text)`, `get_popular_topic_timeline(int, int, int)` |
 | `service_role` | `SELECT`, `INSERT`, `UPDATE`, `DELETE` on `topic_views`, `EXECUTE` on 세 함수 |
+
+## 토픽 AI 생성 결과
+
+- `topics.ai_summary text`: 카드용 AI 요약(생성 전 NULL). 분류 파이프라인의 `topics.summary`와 분리하여 서로 덮어쓰지 않음.
+- `topics.keywords text[]`: 내용 기반 키워드, 기본값 `{}`.
+- `topics.ai_generated_at timestamptz`: 마지막 생성 시각.
+- `topic_relations`: `topic_id < related_topic_id`인 양방향 연결 1행, 설명·이벤트 근거 저장. 토픽 삭제 시 CASCADE.
+- `topic_enrichment_state`: 토픽 ID 묶음별 입력 해시·버전·모델 버전. 생성 결과의 중복/동시 저장 방지.
+- `topic_enrichment_snapshot(bigint[])`: 최대 10개 토픽의 이벤트 입력과 현재 저장 버전 반환.
+- `publish_topic_enrichment(bigint[], text, bigint, text, jsonb, jsonb)`: 입력 해시·버전·근거를 검증한 뒤 요약/키워드/연관 관계를 원자적으로 갱신. 추론은 외부에서 수행하며 저장 중 topics/events/state에 테이블 잠금 사용.
+- `get_topic_enrichment(bigint)`: 키워드·요약·생성 시각·연관 토픽 조회. 공개 응답의 `topic_id`와 연관 토픽 `id`는 JSON 숫자, `summary`는 `ai_summary`에서 조회. 내부 snapshot ID는 서버 정밀도 보존을 위해 문자열 유지. 기존 목록 RPC 응답은 변경하지 않음.
+
+이번 마이그레이션은 스키마만 추가한다. 실제 결과 입력은 별도 생성 작업으로 진행하며, 동일 DB에서는 고정된 토픽 ID 목록으로 운영한다.
