@@ -587,3 +587,24 @@ DB 트리거(`notify_onesignal_after_notification_insert`)가 호출하는 Deno 
 - `get_topic_enrichment(bigint)`: 키워드·요약·생성 시각·연관 토픽 조회. 공개 응답의 `topic_id`와 연관 토픽 `id`는 JSON 숫자, `summary`는 `ai_summary`에서 조회. 내부 snapshot ID는 서버 정밀도 보존을 위해 문자열 유지. 기존 목록 RPC 응답은 변경하지 않음.
 
 이번 마이그레이션은 스키마만 추가한다. 실제 결과 입력은 별도 생성 작업으로 진행하며, 동일 DB에서는 고정된 토픽 ID 목록으로 운영한다.
+
+---
+
+## Functions - subtopic timeline
+
+토픽 타임라인 페이지(`/timeline/:topic_id`)의 서브토픽 탭·타임라인 노드·이벤트 상세 패널용 조회 RPC. 서브토픽 데이터는 `subtopics`·`subtopic_events`(`20260929004030`)에서 읽는다. `20261004120000_create_get_topic_subtopic_timeline.sql`.
+
+- 이벤트는 서브토픽 아래에 넣지 않고 한 번만 내리며 각 이벤트에 `subtopic_ids`를 붙인다. 이벤트 하나가 여러 서브토픽에 속할 수 있어서(N:M) 서브토픽별로 넣으면 중복되기 때문이다.
+- 날짜·기사 수는 `get_live_topic_timeline`, `get_topics`와 같은 기준이다. `occurred_at` = 소속 기사 `MIN(published_at)`, `event_articles`(정상 기사)만 세고 미래 시각 기사는 제외. 기사가 없는 이벤트는 제외하고, 서브토픽 `event_count`와 탭 순서도 화면에 나오는 이벤트로만 계산한다.
+- 상세 패널의 주요 보도는 `get_articles_by_event(p_event_id, NULL, 1, 3, 'desc')`를 쓴다. `get_event`는 로그인 사용자 호출마다 `viewed_events`에 기록이 남아 노드 클릭에 쓰지 않는다.
+- 주의: `get_articles_by_event`는 미래 시각 기사를 거르지 않고 중복 매핑도 합치지 않는다(`COUNT(*)`). 미래 시각 기사나 `event_articles` 중복 매핑이 있는 이벤트는 이 함수의 `article_count`보다 `total_count`가 크고, 최신순 목록 맨 위에 미래 기사가 오거나 같은 기사가 두 번 나온다.
+
+| Function | Returns | Description |
+|---|---|---|
+| `get_topic_subtopic_timeline(p_topic_id bigint)` | json | `{ topic, stats, subtopics, events }` 반환. `topic`: `{ id, title, category, summary, ai_summary, subscription_id, is_subscribed }` — `summary`는 분류 파이프라인 요약, `ai_summary`는 카드용 AI 요약(생성 전 NULL), 비로그인이면 `subscription_id = null`, `is_subscribed = false`. `stats`: `{ first_published_at, last_published_at, article_count, event_count }` — 기간은 기사 `MIN`/`MAX(published_at)`(기사가 없으면 null), 기사 수는 `COUNT(DISTINCT article_id)` — 한 기사가 여러 이벤트에 속할 수 있어 이벤트별 `article_count`의 합보다 작을 수 있다. `event_count`는 기사가 있는 이벤트 수로 `events` 길이와 같다. `subtopics` 항목: `id, name, type, summary, event_count` — `summary`는 별도 생성이라 null일 수 있음, 화면에 나오는 이벤트가 없는 서브토픽은 제외, 정렬은 첫 이벤트 날짜 → id(순서 컬럼이 없음). `events` 항목: `id, title, short_summary, summary, occurred_at, subtopic_ids, article_count, left_percent, mid_percent, right_percent` — 정렬 `occurred_at` → id, `subtopic_ids`는 id 순이고 없으면 `[]`, 비율은 `bias_percentages`. 이벤트나 서브토픽의 `topic_id`가 바뀌어 다른 토픽과의 연결이 남아도 `subtopic_ids`·`event_count`에 넣지 않는다(같은 토픽 검사 트리거는 연결을 넣거나 바꿀 때만 돈다). 토픽이 없으면 예외 |
+
+## Grants - subtopic timeline
+
+| Role | Privileges |
+|---|---|
+| `anon`, `authenticated`, `service_role` | `EXECUTE` on `get_topic_subtopic_timeline(bigint)` (`PUBLIC` 회수) |
