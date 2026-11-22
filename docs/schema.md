@@ -85,7 +85,7 @@
 | Extension | Schema | Usage |
 |---|---|---|
 | `pg_trgm` | `extensions` | topics/events 검색용 `extensions.word_similarity`, `extensions.gin_trgm_ops` |
-| `vector` | `extensions` | articles/events 임베딩 저장 및 유사도 검색 (4096차원) |
+| `vector` | `extensions` | articles/events/topic_causes 임베딩 저장 및 유사도 검색 (768차원, ko-sRoBERTa) |
 | `pg_net` | `extensions` | DB 트리거에서 비동기 HTTP 요청 (`net.http_post`) |
 
 ---
@@ -112,7 +112,12 @@
 | article_image_url | text | NULL | — |
 | created_at | timestamp | NOT NULL | now() |
 | updated_at | timestamp | NOT NULL | now() |
-| embedding | vector(4096) | NULL | — |
+| embedding | vector(768) | NULL | — |
+| minor | jsonb | NULL | — |
+
+인덱스:
+
+- `articles_embedding_hnsw` — hnsw (embedding vector_cosine_ops), 이벤트 분류의 전체 기사 대상 top-K 벡터 후보 검색
 
 ### topics
 
@@ -144,7 +149,7 @@
 | updated_at | timestamp | NOT NULL | now() |
 | prev_event_id | bigint (FK → events.id) | NULL | — |
 | next_event_id | bigint (FK → events.id) | NULL | — |
-| embedding | vector(4096) | NULL | — |
+| embedding | vector(768) | NULL | — |
 | reason | text | NULL | — |
 | short_summary | text | NULL | — |
 
@@ -192,7 +197,7 @@
 | id | bigint (identity) | NOT NULL | — |
 | topic_id | bigint (FK → topics.id) | NOT NULL | — |
 | cause_text | text | NOT NULL | — |
-| cause_embedding | vector(4096) | NULL | — |
+| cause_embedding | vector(768) | NULL | — |
 
 ### article_entities
 
